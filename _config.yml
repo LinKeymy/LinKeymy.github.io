@@ -19,11 +19,11 @@ sidebar-avatar: https://avatars6.githubusercontent.com/u/15958745?v=4&u=917adcef
 # SNS settings
 RSS: false
 # weibo_username:     qiubaiying
-zhihu_username:     Kymylin
-github_username:    qiubaiying
-facebook_username:  baiying.qiu.7
-jianshu_username:   e71990ada2fd
-#twitter_username:   qiubaiying
+zhihu_username:     LinKeymy
+github_username:    LinKeymy
+facebook_username:  LinKeymy
+jianshu_username:   ce211d0ecc76
+#twitter_username:   LinKeymy
 
 
 
@@ -56,7 +56,7 @@ kramdown:
 
 # 评论系统
 # Disqus settings（https://disqus.com/）
-disqus_username: qiubaiying
+disqus_username: LinKeymy
 
 # 多说 将于2017年6月1日正式关停服务，建议使用 Disqus（http://dev.duoshuo.com/threads/58d1169ae293b89a20c57241）
 # Duoshuo settings
@@ -94,11 +94,11 @@ service-worker: true
 # Friends
 friends: [
     {
-        title: "WY",
-        href: "http://zhengwuyang.com"
+        title: "WangWei",
+        href: "https://onevcat.com/"
     },{
-        title: "简书·BY",
-        href: "http://www.jianshu.com/u/e71990ada2fd"
+        title: "简书·Lin",
+        href: "http://www.jianshu.com/u/ce211d0ecc76"
     },{
         title: "Apple",
         href: "https://apple.com"
