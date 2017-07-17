@@ -12,7 +12,7 @@ github_repo: "https://github.com/LinKeymy" # you code repository
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
 sidebar-about-description: "Build your house"
-sidebar-avatar: img/avatar-by.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
+sidebar-avatar: https://avatars6.githubusercontent.com/u/15958745?v=4&u=917adcef4d3855739d821690a9888a69eb2b0145&s=400      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
 
