@@ -1,25 +1,13 @@
-# Linra
+# Vno - Jekyll
 
-> 下面是博客的搭建教程，这个教程修改自 [Hux](https://github.com/Huxpro/huxpro.github.io) 。
+[Vno Jekyll](https://github.com/onevcat/vno-jekyll) is a theme for [Jekyll](http://jekyllrb.com). It is a port of my Ghost theme [vno](https://github.com/onevcat/vno), which is originally developed from [Dale Anthony's Uno](https://github.com/daleanthony/uno).
 
+## Live Demo
 
-使用`jekyll server`的同学需要这样：
+See [Vno - Jekyll](http://vno.onevcat.com) site and [my blog](http://onevcat.com).
 
-1. `gem update jekyll` # 更新jekyll
-2. `gem update github-pages` #更新依赖的包
+You can also find some instruction as well as other sites using Vno theme in [this page](http://vno.onevcat.com/2016/02/hello-world-vno/).
 
-使用`bundle exec jekyll server`的同学在更新 jekyll 后，需要输入`bundle update`来更新依赖的包.
+## Licence
 
-> Note：
-> 可以使用 `jekyll -s` 命令在本地实时配置博客，提高效率。详见 [Jekyll.com](http://jekyllcn.com/)
-
-参考文档：[using jekyll with pages](https://help.github.com/articles/using-jekyll-with-pages/) & [Upgrading from 2.x to 3.x](http://jekyllrb.com/docs/upgrading/2-to-3/)
-
-
-## 致谢
-
-1. 这个模板是从这里[Hux](https://github.com/Huxpro/huxpro.github.io) fork 的。感谢这个作者 
-2. 感谢 Jekyll、Github Pages 和 Bootstrap!
-
-
-
+Great thanks to [Dale Anthony](https://github.com/daleanthony) and his [Uno](https://github.com/daleanthony/uno). Vno Jekyll is based on Uno, and contains a lot of modification on page layout, animation, font and some more things I can not remember. Vno Jekyll is followed with Uno and be licensed as [Creative Commons Attribution 4.0 International](http://creativecommons.org/licenses/by/4.0/). See the link for more information.

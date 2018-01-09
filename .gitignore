@@ -1,8 +1,14 @@
 
-# Created by https://www.gitignore.io/api/macos
+# Created by https://www.gitignore.io/api/jekyll,osx
 
-### macOS ###
-*.DS_Store
+### Jekyll ###
+_site/
+.sass-cache/
+.jekyll-metadata
+
+
+### OSX ###
+.DS_Store
 .AppleDouble
 .LSOverride
 
@@ -20,7 +26,6 @@ Icon
 .TemporaryItems
 .Trashes
 .VolumeIcon.icns
-.com.apple.timemachine.donotpresent
 
 # Directories potentially created on remote AFP share
 .AppleDB
@@ -28,8 +33,4 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-
-# End of https://www.gitignore.io/api/macos
-
-# debug file
-_site
+build.sh
