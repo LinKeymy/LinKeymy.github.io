@@ -1,0 +1,388 @@
+---
+layout:     post
+title:      Cocoa面向协议编程
+subtitle:   在Swift考虑如何使用面向协议组织代码
+date:       2017-07-20
+author:     ALin
+header-img: img/post-bg-swift.jpg
+catalog: true
+tags:
+    - iOS
+    - Swift
+---
+
+
+> 本文首次发布于 [linra](https://github.com/LinKeymy), 作者 [@onevlin](http://onevlin.com/) ,转载请保留原文链接.
+
+# 面向对象编程的困境
+
+假设有如下`Brid`、`Monkey`、`FlyMonkey`、`Ape`、`Human`，5个类
+
+```sw
+class Bird 
+
+	var chibang = "我有翅膀"
+	
+    func eat() {
+    
+        print("i need to eat")
+    }
+    func fly () {
+        print("i can fly in the sky ")
+    }
+}
+
+class Monkey {
+    func  eat() {
+        print("i need to eat")
+    }
+   func climb() {
+       print("\(self) climb")
+   }
+}
+
+
+class FlyMonkey:Monkey {
+  func cooperate() {
+        print("\(self) cooperate with flymokeys")
+    }
+  func fly () {
+      print("i can fly in the sky")
+  }
+}
+
+class Humam: Monkey {
+    func learn() {
+        print("\(self) can learn things quickly")
+    }
+    
+}
+```
+
+现在`Ape`和`Human`也想要像`Bird`和`FlyMonkey`一样`fly`，该如何实现?
+这时，我们迎来了 OOP 的第一个大困境，那就是我们很难在不同继承关系的类里共用代码。这里的问题用“行话”来说叫做“横切关注点” (Cross-Cutting Concerns)
+
+### 横向关切点
+
+
+想要解决这个问题，我们有几个方案：
+
+- Copy & Paste
+
+  这是一个比较糟糕的解决方案，但是有些时候有不少人会选择这个方案，特别是在工期很紧，无暇优化的情况下。这诚然可以理解，但是这也是坏代码的开头。我们应该尽量避免这种做法。
+
+- 引入 BaseClass
+
+  在一个将的继承体系 `Bird` 和`Monkey`的 继承体系抽象成一个 `BaseClass` 上添加需要共享的代码活着直接将代码添加到Monkey中。看起来这是一个稍微靠谱的做法，但是如果不断这么做，会让所谓的 `Base` 很快变成垃圾堆。职责不明确，任何东西都能扔进 `Base`，你完全不知道哪些类走了 `Base`，而这个“超级类”对代码的影响也会不可预估。
+
+- 依赖注入
+
+  通过外界传入一个带有 `fly` 的对象，用新的类型来提供这个功能(估计这就是合成吧)。这是一个稍好的方式，但是引入额外的依赖关系，可能也是我们不太愿意看到的。
+
+- 多继承
+
+  当然，Swift 是不支持多继承的。不过如果有多继承的话，我们确实可以从多个父类进行继承，并将 `fly` 添加到合适的地方。有一些语言选择了支持多继承 (比如 C++)，但是它会带来 OOP 中另一个著名的问题：菱形缺陷。
+
+### 菱形缺陷
+
+上面的例子中，如果我们有多继承
+
+![多继承](http://upload-images.jianshu.io/upload_images/1274352-37d94edbe87c4b7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+在上面这种拓扑结构中，我们在 `FlyMonkey` 中实现 `fly`，在 `Human` 中也就可以继承并使用它了。看起来很完美，我们避免了重复。但是多继承有一个无法回避的问题，就是两个父类都实现了同样的方法时，子类该怎么办？我们很难确定应该继承哪一个父类的方法,比如`Human`的`eat`和`cooperate`应该继承哪个分类，而且这样就`Human`包含了`Mokey`的两个副本，副本发生了重叠。因为多继承的拓扑结构是一个菱形，所以这个问题又被叫做菱形缺陷 (Diamond Problem)。像是 C++ 这样的语言选择粗暴地将菱形缺陷的问题交给程序员处理，这无疑非常复杂，并且增加了人为错误的可能性。而绝大多数现代语言如Objective-C，比如Ruby，Java等对多继承这个特性避而远之。
+
+### 动态派发安全性
+
+bjective-C 恰如其名，是一门典型的 OOP 语言，同时它继承了 Small Talk 的消息发送机制。这套机制十分灵活，是 OC 的基础思想，但是有时候相对危险。考虑下面的代码：
+
+```ob
+
+@interface OCMonkey : NSObject
+- (void)eat;
+- (void)climb;
+
+@end
+
+@implementation OCMonkey
+
+- (void)eat {
+    NSLog(@"i need to eat");
+}
+- (void)climb {
+    NSLog(@"i can climb");
+}
+
+@end
+
+@interface OCFlyMonkey : OCMonkey
+- (void)cooperate;
+- (void)fly;
+
+@end
+
+@implementation OCFlyMonkey
+
+- (void)cooperate {
+    NSLog(@"i cooperate with flymokeys");
+}
+
+- (void)fly {
+    NSLog(@"i can fly in the sky");
+}
+@end
+
+@interface TestDy : NSObject
+- (void)testDynamic;
+- (void)exceptionDynamic;
+@end
+
+- (void)testDynamic {
+    OCMonkey *ocM = [[OCMonkey alloc] init];
+    [ocM eat];
+    OCFlyMonkey *ocFm = [[OCFlyMonkey alloc] init];
+    [ocFm eat];
+    NSArray *array = @[ocM, ocFm];
+    for (id obj in array) {
+        [obj eat];
+    }
+}
+
+- (void)exceptionDynamic {
+    OCMonkey *ocM = [[OCMonkey alloc] init];
+    [ocM eat];
+    OCFlyMonkey *ocFm = [[OCFlyMonkey alloc] init];
+    [ocFm eat];
+    NSString *str = @"just Str";
+    
+    NSArray *array = @[ocM, ocFm,str];
+    for (id obj in array) {
+        [obj eat];
+    }
+}
+
+@end
+```
+
+编译依然可以通过，但是显然，程序将在运行时崩溃。Objective-C 是不安全的，编译器默认你知道某个方法确实有实现，这是消息发送的灵活性所必须付出的代价。而在 app 开发看来，用可能的崩溃来换取灵活性，显然这个代价太大了。虽然这不是 OOP 范式的问题，但它确实在 Objective-C 时代给我们带来了切肤之痛。
+
+
+
+#### 三大困境
+
+我们可以总结一下 OOP 面临的这几个问题。
+
+- 动态派发安全性
+- 横切关注点
+- 菱形缺陷
+
+首先，在 OC 中动态派发让我们承担了在运行时才发现错误的风险，这很有可能是发生在上线产品中的错误。其次，横切关注点让我们难以对对象进行完美的建模，代码的重用也会更加糟糕。
+
+
+
+# 协议扩展和面向协议编程
+
+### 使用协议解决 OOP 困境
+
+协议并不是什么新东西，也不是 Swift 的发明。在 Java 和 C# 里，它叫做 `Interface`。而 Swift 中的 protocol 将这个概念继承了下来，并发扬光大。让我们定义个简单协议，并尝试着实现这个协议
+
+```sw
+protocol Flyable {
+    func fly()
+}
+
+class Bird:Flyable {
+    func eat() {
+        print("i need to eat")
+    }
+    func fly()  {
+        print("i can fly in the sky")
+    }
+}
+```
+
+实现很简单，`Bird`构体通过实现  和 fly 来满足 Flyable。在调用时，我们就可以使用 Flyable 中定义的方法了。
+
+#### 动态派发安全性
+
+除了 `Bird`，其他类型也可以实现 `Flyable`，比如 `FlyMonk`：
+
+```
+class FlyMonkey:Monkey,Flyable {
+    func cooperate() {
+        print("\(self) cooperate with flymokeys")
+    }
+    func fly () {
+        print("i can fly in the sky")
+    }
+}
+```
+
+现在，我们就可以将协议作为标准类型，来对方法调用进行动态派发了：
+
+```
+let array: [Flyable] = [
+		FlyMonkey(), 
+		Bird()]
+for obj in array {
+	obj.fly()
+}
+```
+
+对于没有实现Flyable的类型，编译器将返回错误，因此不存在消息误发送的情况：
+
+```swift
+
+struct BugFly:Flyable {  
+}
+// Compiler Error: 
+// 'BugFly' does not conform to protocol 'Flyable'
+// protocol requires function 'fly()'
+```
+
+这样一来，动态派发安全性的问题迎刃而解
+
+- ✅ 动态派发安全性
+- 横切关注点
+- 菱形缺陷
+
+#### 横切关注点
+
+对于共享代码的横行关切点的问题，你可能不禁要问，这和 Copy & Paste 的解决方式有何不同？没错，答案就是 – 没有不同。不过稍安勿躁，我们还有其他科技可以解决这个问题，那就是协议扩展。协议本身并不是很强大，只是静态类型语言的编译器保证，在很多静态语言中也有类似的概念。那到底是什么让 Swift 成为了一门协议优先的语言？真正使协议发生质变，并让大家如此关注的原因，其实是在 WWDC 2015 和 Swift 2 发布时，Apple 为协议引入了一个新特性，协议扩展，它为 Swift 语言带来了一次革命性的变化。
+
+使用协议和协议扩展，我们可以很好地共享代码。回到上一节的 `fly` 方法，我们来看看如何使用协议来搞定它。现在，我们来为`Flyable` 协议添加一个扩展：
+
+```swfit
+extension Flyable {
+  func fly() {
+    print("i can fly in the sky")
+  }
+}
+```
+
+所谓协议扩展，就是我们可以为一个协议提供默认的实现。有了这个协议扩展后，我们只需要简单地声明 `Bird` 和 `FlyMonkey` 遵守 `Flyable`，就可以直接使用 `fly` 的实现了：
+
+```swift
+extension Bird:Flyable {
+}
+extension FlyMonkey:Monkey,Flyable {
+}
+
+bird.fly()
+flyMonkey.fly()
+```
+
+不仅如此，除了已经定义过的方法，我们甚至可以在扩展中添加协议里没有定义过的方法。在这些额外的方法中，我们可以依赖协议定义过的方法进行操作。总结下来：
+
+- 协议定义
+  - 提供实现的入口
+  - 遵循协议的类型需要对其进行实现
+- 协议扩展
+  - 为入口提供默认实现
+  - 根据入口提供额外实现
+
+这样一来，横切点关注的问题也简单安全地得到了解决。
+
+- ✅ 动态派发安全性
+- ✅ 横切关注点
+- 菱形缺陷
+
+#### 菱形缺陷
+
+最后我们看看多继承。多继承中存在的一个重要问题是菱形缺陷，也就是子类无法确定使用哪个父类的方法。在协议的对应方面，这个问题虽然依然存在，但却是可以唯一安全地确定的。我们来看一个多个协议中出现同名元素的例子：
+
+```swi
+protocol Flyable {
+  var description: String { get }
+  func fly() 
+ }
+
+protocol Descriptionable {
+   var description: String { get }
+}
+ 
+```
+
+如果有一个类型，需要同时实现两个协议的话，它**必须**提供一个 `name` 属性，来**同时**满足两个协议的要求：
+
+```
+struct Bird: Descriptionable, Flyable {
+    var description: String 
+    func fly() {
+      print ("i can fly in the sky")
+    }
+}
+```
+
+这里比较有意思，又有点让人困惑的是，如果我们为其中的某个协议进行了扩展，在其中提供了默认的 `name` 实现，会如何。考虑下面的代码：
+
+```swift
+extension Descriptionable {
+    var description: String { return "This is descriptionable" }
+}
+
+struct Bird: Descriptionable, Flyable {
+    func fly() {
+      print ("i can fly in the sky")
+    } 
+}
+```
+
+这样的编译是可以通过的，虽然 `Bird` 中没有定义 `description`，但是通过 `Descriptionable` 的 `description`(因为它是静态派发的)，`Bird` 依然可以遵守 `Flyable`。不过，当 `Descriptionable` 和` Flyable` 都有 `description` 的协议扩展的话，就无法编译了：
+
+```swift
+extension Descriptionable {
+    var description: String { return "This is descriptionable" }
+}
+extension Flyable {
+ 	var description: String { return "This is flyable" }
+}
+struct Bird: Descriptionable, Flyable {
+    func fly() {
+      print ("i can fly in the sky")
+    } 
+}
+// 无法编译，description 属性冲突
+```
+
+这种情况下，`Bird` 无法确定要使用哪个协议扩展中 `description` 的定义。在同时实现两个含有同名元素的协议，**并且**它们都提供了默认扩展时，我们需要在具体的类型中明确地提供实现。这里我们将 `Bird` 中的 `description` 进行实现就可以了：
+
+```swift
+extension Descriptionable {
+    var description: String { return "This is descriptionable" }
+}
+extension Flyable {
+ 	var description: String { return "This is flyable" }
+}
+struct Bird: Descriptionable, Flyable {
+	var description: String { return "This is bird" }
+    func fly() {
+      print ("i can fly in the sky")
+    } 
+}
+```
+
+这里的行为看起来和菱形问题很像，但是有一些本质不同。首先，这个问题出现的前提条件是同名元素**以及**同时提供了实现，而协议扩展对于协议本身来说并不是必须的。其次，我们在具体类型中提供的实现一定是安全和确定的。当然，菱形缺陷没有被完全解决，Swift 还不能很好地处理多个协议的冲突，这是 Swift 现在的不足。
+
+- ✅ 动态派发安全性
+- ✅ 横切关注点
+- ❓菱形缺陷
+
+#### 总结
+
+##### OOP#####
+
+我们看到 `Monkey` 和 `Human` 共享了一部分代码，这部分代码被封装到了父类中，而除了 `Human` 的其他的子类也能够使用 `Monkey` 的这些代码。这其实就是 OOP 的核心思想 - 使用封装和继承，将一系列相关的内容放到一起。我们的前辈们为了能够对真实世界的对象进行建模，发展出了面向对象编程的概念，但是这套理念有一些缺陷。虽然我们努力用这套抽象和继承的方法进行建模，但是实际的事物往往是一系列**特质的组合**，而不单单是以一脉相承并逐渐扩展的方式构建的。
+
+##### POP#####
+
+虽然我们在Cocoa中还说依赖面向对象的编程，但是可以使用面向协议的思维方式去构建代码，这样可以在做到面向对象**封装**的同时也摆脱了继承的关系，其他类或者结构体等可以不在任何一条继承体系下共享相同功能的代码，所以我们可以使用 POP 来解耦（在我看来继承有时候也是一种耦合），通过组合的方式让代码有更好的重用性。同时也解决了面向对象的**动态派发安全性**和**横切关注点**的问题。
+
+通过面向协议的编程，我们可以从传统的继承上解放出来，用一种更灵活的方式，搭积木一样对程序进行组装。每个协议专注于自己的功能，特别得益于协议扩展，我们可以减少类和继承带来的共享状态的风险，让代码更加清晰。
+
+高度的协议化有助于解耦、测试以及扩展，而结合泛型来使用协议，更可以让我们免于动态调用和类型转换的苦恼，保证了代码的安全性。
+
+
+> 参考
+>
+> -  [《面向协议编程与 Cocoa 的邂逅 (上)》](https://onevcat.com/2017/04/storyboard-argue/)
+
