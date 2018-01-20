@@ -1,0 +1,50 @@
+---
+layout: post
+title: xcode 项目配置的注意点
+subtitle: ios项目配置
+author: JackLin
+date: 2018-01-19 11:17:39 +0800
+---
+#### Status Bar Style 
+设置此属性只在程序启动的时候起作用，也即是仅仅控制程序启动时的状态来显示效果，在程序启动后，状态栏的显示效果将由程序控制。
+
+#### Embeded Binaries 
+这里一般导入.a文件（一般第三方商用的库都在这里导）
+
+#### Linked Framworks and Libraries
+链接Framework和系统的一些库文件
+
+#### LaunchScreen 和 LaunchImage
+1.通过LaunchImage设置启动界面，屏幕的可视范围由图片决定，这个时候就需要设计方提供各种尺寸的启动图片。   
+2. LaunchScreen 自动识别当前真机或者模拟器的屏幕尺寸，设计方知需要提供一个可以拉伸的图片即可，可展示更多的东西（在代码）
+
+#### main 和 UIApplicationMain
+
+
+``` 
+int main(int argc, char * argv[]) {
+    @autoreleasepool {
+        return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+    }
+}
+```
+
+
+  1.创建UIApplication(1.打开网页,发短信,打电话. 2.设置应用程序提醒数字 3.设置联网状态 4.设置状态栏).   
+  2.创建AppDelegate代理对象,并且成为UIApplication代理,(监听整个app生命周期,处理内存警告)  
+    3.开启主运行循环,保证程序一直运行(runloop:每一个线程都有runloop,主线程有一个runloop自动开启).  
+    4.加载info.plist,判断是否指定了main.storyboard,如果指定,就会去加载
+      
+```
+执行如下步骤：
+    1.创建窗口
+    2.设置根控制器
+    3.显示窗口
+```
+
+
+
+
+
+
+
