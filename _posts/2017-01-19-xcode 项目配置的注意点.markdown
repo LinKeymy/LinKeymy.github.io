@@ -18,6 +18,15 @@ date: 2018-01-19 11:17:39 +0800
 1.通过LaunchImage设置启动界面，屏幕的可视范围由图片决定，这个时候就需要设计方提供各种尺寸的启动图片。   
 2. LaunchScreen 自动识别当前真机或者模拟器的屏幕尺寸，设计方知需要提供一个可以拉伸的图片即可，可展示更多的东西（在代码）
 
+
+#### Build Active Architecture Only 
+这个设置很重要，就是只针对你当前连接的设备(需要构建的设备，在xcode的左上角有显示，如下图)这种架构的硬件构建你的程序库文件，这样就可以更快地build，pods里面的第三方库都是这样的设置(debug为yes，release为no)。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/WechatIMG2.jpeg)
+
+这里有个向下兼容的概念：
+就是说，编译出的版本是向下兼容的，比如你设置此值为yes，用iphone4编译出来的是armv7版本的，iphone5也可以运行，但是armv6的设备就不能运行。
+
 #### main 和 UIApplicationMain
 
 
