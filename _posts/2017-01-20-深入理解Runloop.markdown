@@ -452,6 +452,6 @@ int CFRunLoopRunSpecific(runloop, modeName, seconds, stopAfterHandle) {
 可以看到，实际上 RunLoop 就是这样一个函数，其内部是一个 do-while 循环。当你调用 CFRunLoopRun() 时，线程就会一直停留在这个循环里；直到超时或被手动停止，该函数才会返回。上面的逻辑大概如下图:
 
 ![有帮助的截图]({{ site.url }}/assets/postsImages/RunLoop_logic.png)
-###小结一下: 
+### 小结一下: 
 Source和Time是可以触发Runloop去处理事件的，统称为输入源，而observer是用来监听整个Runloop的运行过程，以便程序在不同阶段可以插入其他操作。无论运行中的Runloop本身还是Source/Time/Observe都是在一个特定的模式下才会有效。运行中的Runloop中的只会处理到和它当前运行相同模式的Source/Time/Observer（如果当前模式在commonmode中，那么commonmode的也会被处理，本质来说不用补充这个说明的，因为commonmode items会变同步到对应的mode中(如default和tracking）。Runloop要更改运行模式必须退出当前mode，然后以新的mode进入。
 #### 关于Dunloop的基本概念和相关的内容结构就先到这里了，下一篇回写一下系统的Runloop在主线程中的使用
