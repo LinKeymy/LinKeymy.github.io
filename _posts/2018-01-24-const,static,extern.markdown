@@ -6,8 +6,6 @@ author: JackLin
 date: 2018-01-24 23:09:14 +0800
 ---
 
-## const,static,extern
-
 ### const与宏
 
 * `执行时刻`:宏是预编译（编译之前先做替换），const是编译阶段。
@@ -21,7 +19,7 @@ date: 2018-01-24 23:09:14 +0800
 关于宏的使用细节和注意点推荐大家前往传送们[宏定义的黑魔法 - 宏菜鸟起飞手册](https://onevcat.com/2014/01/black-magic-in-macro/)，非常推荐大家去看看王巍大神的blog。
 	
 ### const作用
-	*	const仅仅用来修饰右边的变量,被const修饰的变量是只读的。
+* const仅仅用来修饰右边的变量,被const修饰的变量是只读的。
 
 #### const:修饰基本变量
 
@@ -29,36 +27,35 @@ date: 2018-01-24 23:09:14 +0800
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         // 这两种写法是一样的，const只修饰右边的基本变量b
-//        const int b = 20; // b:只读变量
-//        int const c = 20; // b:只读变量c
-//        // 不允许修改值
-//        b = 1;   //编译报错
-//        c = 1;   //编译报错
+        // const int b = 20; // b:只读变量
+        //  int const c = 20; // b:只读变量c
+        //  / 不允许修改值
+        //  b = 1;   //编译报错
+        //  c = 1;   //编译报错
         int a = 100;
         int b = 1000;
         
         int * const p;  // p:只读  *p:变量 // 指向的地址无法更改，但是指向的地址对应的变量可以更改
         *p = a;
-       // p = &a; //编译报错
+        // p = &a; //编译报错
         
         int const * p1; // p1:变量 *p1:只读 // 指向的地址可以更改
         p1 = &a;
         p1 = &b;
-       // *p1 = 100000;  //编译报错
+        // *p1 = 100000;  //编译报错
         const int * p2; // p2:变量 *p2:只读
         p2 = &a;
         p2 = &b;
-       // *p2 = 100000;  //编译报错
+        // *p2 = 100000;  //编译报错
         const int * const p3; // p3:只读 *p3:只读
-//        *p3 = a;     //编译报错
-//        p3 = &a;      //编译报错
+        // *p3 = a;     //编译报错
+        //  p3 = &a;      //编译报错
         int const * const p4; // p4:只读 *p4:只读
-//        *p4 = a;    //编译报错
-//        p4 = &a;      //编译报错
+        // *p4 = a;    //编译报错
+        // p4 = &a;      //编译报错
     }
     return 0;
 }
-
 
 ```
 
@@ -69,26 +66,25 @@ int main(int argc, const char * argv[]) {
     @autoreleasepool {
         int * const p;  // p:只读  *p:变量 // 指向的地址无法更改，但是指向的地址对应的变量可以更改
         *p = a;
-       // p = &a; //编译报错
+        // p = &a; //编译报错
         
         int const * p1; // p1:变量 *p1:只读 // 指向的地址可以更改
         p1 = &a;
         p1 = &b;
-       // *p1 = 100000;  //编译报错
+        // *p1 = 100000;  //编译报错
         const int * p2; // p2:变量 *p2:只读
         p2 = &a;
         p2 = &b;
-       // *p2 = 100000;  //编译报错
+        // *p2 = 100000;  //编译报错
         const int * const p3; // p3:只读 *p3:只读
-		// *p3 = a;     //编译报错
-		// p3 = &a;      //编译报错
+        // *p3 = a;     //编译报错
+        // p3 = &a;      //编译报错
         int const * const p4; // p4:只读 *p4:只读
-		// *p4 = a;    //编译报错
-		// p4 = &a;      //编译报错
+        // *p4 = a;    //编译报错
+        // p4 = &a;      //编译报错
     }
     return 0;
 }
-
 
 ```
 
@@ -110,11 +106,10 @@ UIKIT_EXTERN NSString *const UIKeyboardIsLocalUserInfoKey           NS_AVAILABLE
 
 #### 修饰函数中传入的参数
 
-	*	1.参数是地址，里面只能通过地址读取值,不能通过地址修改值
-	*	2.这个方法的参数是地址，里面不能修改参数的地址。
+* 1.参数是地址，里面只能通过地址读取值,不能通过地址修改值
+* 2.这个方法的参数是地址，里面不能修改参数的地址。
 
 不过这样的使用在iOS中较少用到
-
 ```
 
 void example1(int const *a){
@@ -122,13 +117,13 @@ void example1(int const *a){
     // 只能修改地址a,不能通过a修改访问的内存空间
     int b = 100;
     a = &b;  //修改的参数，不是改变外部变量保存的地址
-//    *a = 1000; // 编译不通过
+    //    *a = 1000; // 编译不通过
 }
 
 //函数的参数是地址，里面不能修改参数的地址。但是可以修改对应地址保存的值
 void example2(int * const a){
     int b = 10000;
-//    a = &b; // 编译不通过
+    //    a = &b; // 编译不通过
     *a = 1000;
 }
 
@@ -147,8 +142,6 @@ int main(int argc, const char * argv[]) {
 ```
 
 ### static和extern
-
-*	`static作用`:  // 相当于文件私有
 
 ##### static修饰局部变量   
 * 被static修饰局部变量,延长生命周期,跟整个应用程序有关
@@ -228,6 +221,7 @@ int main(int argc, const char * argv[]) {
 
 > 很合理，staticVar被整个文件访问到了，而且地址也不会改变，毕竟就声明一次。
 
+
 但是我怎么可以让在`Farter.m`文件中的变量staticVar可以直接在`main.m`文件中被访问呢？，extern可以来帮忙。
 
 #### extern声明一个全局变量
@@ -255,6 +249,8 @@ int main(int argc, const char * argv[]) {
 如上，如果只是在代码的`main.m`文件中	 extern int staticVar，而没有去掉`Farter.m`中static int staticVar的static	,那么编译会不通过，表示	在`main.m`中staticVar没有被定义。也就是证明了，static修饰的变量，extern声明无效。
 		
 ![有帮助的截图]({{ site.url }}/assets/postsImages/static_extern_error.png)	
+
+
 去掉`Farter.m`中static int staticVar的static,那么编译通过,打印结果和单独使用static修饰全局变量类似，变量的地址不会被改变
 
 ![有帮助的截图]({{ site.url }}/assets/postsImages/extern_right.png)
@@ -263,6 +259,7 @@ int main(int argc, const char * argv[]) {
 ### static、extern和const结合
 
 #### static const 结合
+
 * 声明在`一个文件中`只读的静态变量，static与const作用（可以简单认为就需要一个文件私有的静态常量）
 
 ```oc
