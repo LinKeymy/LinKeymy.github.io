@@ -1,6 +1,6 @@
 ---
 layout: post
-title: NSObjecOC中的类和对象
+title: Objective-C中的类和对象
 subtitle: 
 author: JackLin
 date: 2018-01-19 23:27:15 +0800
@@ -58,7 +58,7 @@ struct objc_class : objc_object {
 
 * 实例方法调用时，通过对象的 isa 在类中获取方法的实现
 * 类方法调用时，通过类的 isa 在元类中获取方法的实现
-下面这张图介绍了对象，类与元类之间的关系，已经觉得足够清晰了，所以不在赘述。
+  下面这张图介绍了对象，类与元类之间的关系，已经觉得足够清晰了，所以不在赘述。
 
 ![有帮助的截图]({{ site.url }}/assets/postsImages/objc-isa-class-diagram.png)
 
@@ -93,7 +93,7 @@ NSLog(@"%d, %d", b1, b2);
 ```
 
 >
-答案：都输出”1”(YES).  
+>答案：都输出”1”(YES).  
 >解释：
 >objc中：
 
@@ -112,7 +112,7 @@ NSLog(@"%d, %d", b1, b2);
 3.由于objc对这块的设计是，NSObject的元类的父类是NSObject类（也就是我们熟悉的NSObject类），其中有所有的实例方法，因此找到了- responseToSelector
 
 >
-补充：NSObject类中的所有实例方法很可能都对应实现了一个类方法（至少从开源的代码中可以看出来），如+ resonseToSelector，但并非公开的API，如果真的是这样，上面到第2步就可以找到这个方法。
+>补充：NSObject类中的所有实例方法很可能都对应实现了一个类方法（至少从开源的代码中可以看出来），如+ resonseToSelector，但并非公开的API，如果真的是这样，上面到第2步就可以找到这个方法。
 
 >再补充： 非NSObject的selector这样做无效。
 
