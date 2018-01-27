@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Obj方法缓存细节
+title: Objective-C方法缓存细节
 subtitle: 
 author: JackLin
 date: 2018-01-26 00:03:39 +0800
