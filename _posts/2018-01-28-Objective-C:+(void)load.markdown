@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Objective-C:+(void)load
+title: Objective-C:+load
 subtitle: 
 author: JackLin
 date: 2018-01-28 14:34:12 +0800
@@ -12,7 +12,7 @@ date: 2018-01-28 14:34:12 +0800
 2. 父类先于子类调用
 3. 类先于分类调用
 
-首先添加写点代码测试一下上面的3条规则:
+首先写点代码测试一下上面的3条规则:
 
 ```oc
 
