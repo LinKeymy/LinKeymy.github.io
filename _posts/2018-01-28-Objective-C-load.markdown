@@ -430,7 +430,7 @@ static void schedule_class_load(Class cls)
 
 > 这里通过这行代码 `schedule_class_load(cls->superclass)` 总是能够保证没有调用 `load` 方法的父类先于子类加入 `loadable_classes` 数组，从而确保其调用顺序的正确性。
 
-第2条规则主要在 `call_load_methods` 中实现:
+第3条规则主要在 `call_load_methods` 中实现:
 
 ```oc
 do {
