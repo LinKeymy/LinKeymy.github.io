@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Objective-C方法缓存细节
+title: Objective-C:方法缓存细节
 subtitle: 
 author: JackLin
 date: 2018-01-26 00:03:39 +0800
@@ -10,14 +10,8 @@ date: 2018-01-26 00:03:39 +0800
 
 大家或许都了解到，Objectvie-C中的对象在一个方法被调用后会被添加到缓存中方便下次查找的时候直接可以从缓存中查找到以加快方法的查找时间。写这篇文章的起因是我对Objectvie-C中缓存的好奇
 
-* 在方法被缓存后，objc_msgSend函数是否会进入lookUpImpOrForward然后在imp = cache_getImp(cls, sel)中获得函数的调用，还是在objc_msgSend内部做了其他处理不用进入lookUpImpOrForward即可完成。
+* 在方法被缓存后，objc_msgSend函数是否会进入lookUpImpOrForward然后在imp = cache_getImp(cls, sel)中获得函数的调用，还是在objc_msgSend内部做了其他处理不用进入lookUpImpOrForward即可完成。​
 
-*  ​
-
-  ```oc
-  imp = (IMP)_objc_msgForward_impcache;
-  cache_fill(cls, sel, imp, inst);
-  ```
 
 #### cache、objc_msgSend和lookUpImpOrForward
 
