@@ -18,7 +18,7 @@ date: 2018-01-29 00:27:23 +0800
 
 ###  Category的使用
 
-- 可以把类的实现分开在几个不同的文件里面
+- 把类的实现分开在几个不同的文件里面
 
   > 1. 可以减少单个文件的体积 
   > 2. 可以把不同的功能组织到不同的category里 
@@ -103,11 +103,12 @@ date: 2018-01-29 00:27:23 +0800
 
 Extension看起来很像一个匿名的Category，但是extension和有名字的Category几乎完全是两个东西。
 
- **Extension在编译期决议**
+ **Extension在编译期决议**    
 
 Extension就是类的一部分，在编译期和头文件里的@interface以及实现文件里的@implement一起形成一个完整的类，它伴随类的产生而产生，亦随之一起消亡。extension一般用来隐藏类的私有信息，你必须有一个类的源码才能为一个类添加extension，所以你无法为系统的类比如NSString添加extension
 
-**Category在运行期决议**
+**Category在运行期决议**     
+
 Category中的所有内容都是在运行期实现一个类的时候调用`methodizeClass`或者`remethodizeClass`被install到类结构中的，就category和extension的区别来看，我们可以推导出一个明显的事实，extension可以添加实例变量，而category是无法添加实例变量的（因为在运行期，对象的内存布局已经确定，如果添加实例变量就会破坏类的内部布局，这对编译型语言来说是灾难性的）
 
 ### Category和Protocol
@@ -124,13 +125,13 @@ Category是对一个功能完备的类的一种补充、扩展，就像一个东
 
 ### Category和+load
 
-在类和category中都可以有+load方法，关于load调用顺序的详细理解这里就不再从源码里面看了，我单独写过一篇文章来探究![+load](http://onevlin.com/2018/01/Objective-C-load/)方法。+load方法的调用有三条规则:
+在类和category中都可以有+load方法，关于load调用顺序的详细理解这里就不再从源码里面看了，我单独写过一篇文章来探究[+load](http://onevlin.com/2018/01/Objective-C-load/)方法。+load方法的调用有三条基本规则:
 
 > 1. `main` 函数之前调用
 > 2. 父类先于子类调用
 > 3. 类先于分类调用
 
-可是，如果多个分类中都添加了+load方法呢？调用顺序会怎么样，从![+load](http://onevlin.com/2018/01/Objective-C-load/)可以了解到在加载可执行文件的时候准备category的+load方法时，是按照先dicover的先被放到loadable_categories里面的顺序，也就是先读到先加入loadable_categories，在call_category_loads调用category的+load方法时是按照FIFO的顺序调用。所以category中的+load方法的调用和其载入顺序有关，而载入顺序又依赖于编译的顺序:
+可是，如果多个分类中都添加了+load方法呢？调用顺序会怎么样，从[+load](http://onevlin.com/2018/01/Objective-C-load/)可以了解到在加载可执行文件的时候准备category的+load方法时，是按照先dicover的先被放到loadable_categories里面的顺序，也就是先读到先加入loadable_categories，在call_category_loads调用category的+load方法时是按照FIFO的顺序调用。所以category中的+load方法的调用和其载入顺序有关，而载入顺序又依赖于编译的顺序:
 
 ```oc
 @implementation ALin (Hi)
@@ -165,7 +166,7 @@ Category是对一个功能完备的类的一种补充、扩展，就像一个东
 
 > 分类中的+load调用的是先编译先调用
 
-###Category的结构和权限
+### Category的结构和权限
 
 我们知道，所有的OC类和对象，在runtime层都是用struct表示的，category也不例外，在runtime层，category用结构体category_t（在objc-runtime-new.h中可以找到此定义），它包含了
 
