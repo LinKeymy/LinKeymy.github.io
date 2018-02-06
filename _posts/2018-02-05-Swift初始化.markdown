@@ -1,0 +1,478 @@
+---
+layout: post
+title: Swift:初始化
+subtitle: 
+author: JackLin
+date: 2018-02-05 00:37:45 +0800
+---
+
+### 前言
+
+初始化是为类、结构体或者枚举准备实例的过程。也就是说在Swift中类、结构体或者枚举的属性在对应的实例在初始化后必须都有值(或可选值)。Swift中的初始化过程需要给实例里的每一个存储属性设置一个初始值并且在新实例可以使用之前执行任何其他所必须的配置或初始化。初始化有很多知识点，这里仅仅是笔者记录了自己觉得需要注意的一下点。希望了解更多的内容请前往[The Swift Programming Language (Swift 4.0.3)](https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/Initialization.html#//apple_ref/doc/uid/TP40014097-CH18-ID203)
+
+Swift中初始化内容和规则对比Objc虽然多了不少，但是它的两段式初始化过程，初始化的横向和向上委托，过程中的安全检查，保证了整个过程安全，清晰，有条理。
+
+> 关键词: init 、init? 、required、override、Convenience、Designated
+
+### 值类型的构造器委托
+
+构造器可以调用其他构造器来执行部分实例的初始化。这个过程，就是所谓的*构造器委托*，避免了多个构造器里冗余代码。
+
+构造器委托的运作，以及允许那些形式的委托，这些规则对于值类型和类类型是不同的。值类型(结构体和枚举)不支持继承，所以他它们的构造器委托的过程相当简单，因为它们只能提供它们自己为另一个构造器委托。对于值类型，当你写自己自定义的构造器时可以使用` self.init` 从相同的值类型里引用其他构造器。你只能从构造器里调用 `self.init` 。
+
+```swift
+
+struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+
+struct Rect {
+    var origin = Point()
+    var size = Size()
+    init() {}
+    init(origin: Point, size: Size) {
+        self.origin = origin
+        self.size = size
+    }
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        self.init(origin: Point(x: originX, y: originY), size: size)
+    }
+}
+```
+
+对于`init(center:size:) `构造器来说，可以充分地利用现有已经提供了准确功能的构造器`init(origin:size:)` 。
+
+### 类的继承和初始化
+
+所有类的存储属性——包括从它的父类继承的所有属性——都**必须**在初始化期间分配初始值。Swift 为类类型定义了两种构造器以确保所有的存储属性接收一个初始值: **指定构造器**和**便利构造器**
+
+#### 指定构造器(Designated Initializers)
+
+* Designated Initializers是类的主要构造器。指定的构造器可以初始化所有那个类引用的属性并且调用合适的父类构造器将这个初始化过程沿着父类初始化链继续下去。
+* 每个类至少得有一个指定构造器，类偏向于少量指定构造器，并且一个类通常只有一个指定构造器。在某些情况下，通过从父类继承一个或多个指定构造器来满足需要指定构造器的要求。
+
+##### 指定构造器的语法（Syntax）
+
+```swift
+init(parameters) {
+    statements
+}
+```
+
+#### 便利构造器(Convenience Initializers)
+
+便利构造器是次要的，它不是必须的。通常情况下是为了提供便利的而存在。比如在类里定义一个便利构造器来调用一个指定的构造器作为便利构造器来给指定构造器设置默认形式参数。你也可以为具体的使用情况或输入的值类型定义一个便利构造器从而创建这个类的实例。
+
+```swift
+class Alin {
+    var name: String
+    var age: Int
+    init(name: String, age: Int) {
+        self.age = age
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: "alin", age: 18)
+    }
+}
+let alin = Alin()
+print(alin.age)
+```
+
+上面 `init(name: String, age: Int)`是Alin的指定构造器，但是为了方便添加了一个便利构造器`init()`
+
+如果你的类不需要便利构造器你可以不提供它。提供便利构造器通常是为了节省时间或者清晰简化过程而提供。
+
+##### 便利构造器语法(Syntax)
+
+```swift
+convenience init(parameters) {
+    statements
+}
+```
+
+#### 类类型的构造器委托
+
+- 指定构造器必须总是向上委托。
+- 便利构造器必须总是横向委托,且在委托链上必须调用指定构造器。
+
+下图展示了四个类之间更复杂的层级结构。它演示了指定构造器是如何在此层级结构中充当”管道”作用，在类的初始化链上简化了类之间的内部关系：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/initializerDelegation02_2x.png)
+
+
+
+> 可以看到便利构造器的横行委托，是依赖于指定构造器的向上委托。
+
+
+
+### 两段式初始化
+
+* 在第一个阶段，每一个存储属性被引入类(那个类定义的属性)为分配了一个初始值。
+* 第二个阶段，每个类都有机会在新的实例准备使用之前来定制它的存储属性。
+
+> Swift 的两段式初始化过程与 Objective-C 的初始化类似。主要的不同点是在第一阶段，Objective-C 为每一个属性分配零或空值(例如0 或 nil )。Swift 的初始化流程更加灵活，它允许你设置自定义的初始值，并可以自如应对 0 或 nil 不为合法值的情况。
+
+
+
+#### 两段式初始化的安全检查
+
+Swift编译器执行四种有效的安全检查来确保两段式初始化过程能够顺利完成：
+
+* 指定构造器必须保证在向上委托给父类构造器之前，其所在类引入的所有属性都要初始化完成。即是子类必须完成自己定义的属性的初始化后才能将剩下的初始化工作向上委托给父类。
+* 指定构造器必须先向上委托父类构造器，然后才能为继承的属性设置新值。如果不这样做，指定构造器赋予的新值将被父类中的构造器所覆盖。
+* 便利构造器必须先委托同类中的其它构造器，然后再为任意属性赋新值（包括同类里定义的属性）。如果没这么做，便利构构造器赋予的新值将被自己类中其它指定构造器所覆盖。
+* 构造器在第一阶段初始化完成之前，不能调用任何实例方法、不能读取任何实例属性的值，也不能引用 self 作为值。
+
+> 可以发现，直到第一阶段结束类实例才完全合法。没结束的话属性只能被读取，方法也只能被调用。实例的内存被完全初始化了，也就是第一阶段完成后。顶部构造器往下，链中的每一个指定构造器都有机会进一步定制实例。构造器现在能够访问self 并且可以修改它的属性，调用它的实例方法等等。这时链中任何便利构造器都有机会定制实例以及使用 slef 。
+
+
+
+### 构造器的继承和重写
+
+#### 继承
+
+不像在 Objective-C 中的子类，Swift 的子类不会默认继承父类的构造器。总之，在特定的情况下父类构造器*是*可以被自动继承的。假设你为你子类定义(引入、添加)的任何新的属性都提供了默认值，请遵守以下2个规则：
+
+* 如果你的子类没有定义任何指定构造器，它会自动继承父类所有的指定构造器。
+* 如果你的子类提供了*所有*父类指定构造器的实现——要么是通过规则1继承来的，要么通过在定义中提供自定义实现的——那么它自动继承所有的父类便利构造器。(因为子类实现了父类的所有指定构造器，这样的话父类中所有的便利构造器调用的指定构造器都有了对应的实现，很安全，很合理)
+
+> 概括就是：子类没有自己的指定构造器就继承所以父类的指定构造器，如果子类重写了所有父类的指定构造器，那么就会继承所有的父类构造器
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/initialiezer_Inheritance.png)
+
+> 上面因为继承了所有父类的指定构造器，和重写父类所有的指定构造器是等效的，因此也会继承所有父类的便利构造器
+
+#### 重写
+
+* 如果你想自定义子类来实现一个或多个和父类相同的构造器，你可以在子类中为那些构造器提供定制的实现。当重写父类指定构造器时，你必须写` override `修饰符，就算你子类构造器的实现是一个便利构造器。
+* 如果重写父类便利构造器的子类构造器，父类的便利构造器将永远不会通过你的子类直接调用。因此，你的子类不能(严格来讲)提供父类构造器的重写。当提供一个匹配的父类便利构造器的实现时，你不用写 override 修饰符。
+
+> 总结就是： 重写父类指定构造器必须添加override，重写父类便利构造器不需要添加override
+
+```swift
+class Food {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: "[Unnamed]")
+    }
+}
+
+class RecipeIngredient: Food {
+    var quantity: Int
+    init(name: String, quantity: Int) {
+        self.quantity = quantity
+        super.init(name: name)
+    }
+    override convenience init(name: String) {
+        self.init(name: name, quantity: 1)
+    }
+}
+
+class ShoppingListItem: RecipeIngredient {
+    var purchased = false
+    var description: String {
+        var output = "\(quantity) x \(name)"
+        output += purchased ? " ✔" : " ✘"
+        return output
+    }
+}
+```
+
+* `RecipeIngredient`重写了`Food`的指定构造器，并且定义为`RecipeIngredient`的便利构造器，所以在`init(name:)`前面添加了`override` `convenience`。又因为它重写了父类所有(唯一)的指定构造器，它也就继承类父类的便利构造器`init()`。
+
+  ![有帮助的截图]({{ site.url }}/assets/postsImages/initializersExample02_2x.png)
+
+* `ShoppingListItem`没有自定义任何指定构造器，所有它会继承父类的所有指定构造器和便利构造器。
+
+  > 你可以使用全部三个继承来的初始化器来创建 ShoppingListItem 的新实例
+
+```swfit
+var breakfastList = [
+    ShoppingListItem(),
+    ShoppingListItem(name: "Bacon"),
+    ShoppingListItem(name: "Eggs", quantity: 6),
+]
+```
+
+上面的构造器的继承关系如图:
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/initializersExample03_2x.png)
+
+
+
+### 可失败构造器
+
+初始化过程可能会不理想或者说失败，其中包括给初始化传入无效的形式参数值，或缺少某种外部所需的资源，又或是其他阻止初始化的情况。为了妥善处理这种可能失败的情况，在类、结构体或枚举中定义一个或多个可失败的构造器。格式要求如下：
+
+* 通过在init 关键字后面添加问号( init? )。
+* 不能定义可失败和非可失败的初始化器为相同的形式参数类型和名称。
+* 可失败的构造器创建了一个初始化类型的**可选值**。在失败初始化情况下写 return nil 语句。
+* 不能使用 return 关键字来表示初始化成功了。
+
+> 格来讲，初始化器不会有返回值。相反，它们的角色是确保在初始化结束时， self 能够被正确初始化。虽然你写了 returnnil 来触发初始化失败，但是你不能使用 return 关键字来表示初始化成功了。
+
+```swift
+struct Animal {
+    let species: String
+    init?(species: String) {
+        if species.isEmpty { return nil }
+        self.species = species
+    }
+}
+```
+
+#### 枚举的可失败构造器(init?(rawValue:) )
+
+枚举的可失败构造器和类一样，不用的是枚举在有原始值的情况下会默认提供一个可失败的构造器，而不用自己提供。因此：
+
+* 对于没有原始只的枚举你可以自己定义一个可失败的构造器`init?(parameters)`。
+* 如果是有原始值的构造器默认就有可失败构造器 `init?(rawValue:)`
+
+#####  没有原始值
+
+有时候可以使用一个可失败初始化器来在带一个或多个形式参数的枚举中选择合适的情况。如果提供的参数没有匹配就可能失败。构造器就`return nil`。
+
+```swift
+enum TemperatureUnit {
+    case Kelvin, Celsius, Fahrenheit
+    init?(symbol: Character) {
+        switch symbol {
+        case "K":
+            self = .Kelvin
+        case "C":
+            self = .Celsius
+        case "F":
+            self = .Fahrenheit
+        default:
+            return nil
+        }
+    }
+}
+```
+
+上面展示了如果没有初始化传递进来的`Character`没有匹配到K、F、C就会失败。
+
+##### 有原始值
+
+```swift
+enum TemperatureUnit: Character {
+    case Kelvin = "K", Celsius = "C", Fahrenheit = "F"
+}
+ 
+let fahrenheitUnit = TemperatureUnit(rawValue: "F")
+if fahrenheitUnit != nil {
+    print("This is a defined temperature unit, so initialization succeeded.")
+}
+// prints "This is a defined temperature unit, so initialization succeeded."
+ 
+let unknownUnit = TemperatureUnit(rawValue: "X")
+if unknownUnit == nil {
+    print("This is not a defined temperature unit, so initialization failed.")
+}
+// prints "This is not a defined temperature unit, so initialization failed."
+```
+
+这里`TemperatureUnit`枚举有了原始值，它的可失败构造器接收一个名为 `rawValue` 的原始值类型形式参数，如果找到了匹配的枚举情况就选择其一，或者没有找到匹配的值就触发初始化失败。
+
+#### 初始化失败的传递
+
+因为初始化过程可以委托，因此初始化过程的失败具有传递性，它的传递性遵循以下规则：
+
+* 类的初始化可以向上委托给父类，也可以横向委托给当前类的其他构造器，失败的初始化过程同样具有上面的关系，只要遇到失败的委托，便认定失败。
+* 结构体和枚举没有继承关系，所以只能横向委托，同样是遇到失败便认定初始化失败。
+* 可失败构造器可以委托其他的非可失败构造器，失败的条件可以自定义
+
+>  无论哪种情况，如果你委托到另一个构造器器导致了初始化失败，那么整个初始化过程也会立即失败(return nil)，并且之后任何初始化代码都不会执行。
+
+```swift
+class Product {
+    let name: String
+    init?(name: String) {
+      // 如果这里失败，就返回了，不会执行self.name = name
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+ 
+class CartItem: Product {
+    let quantity: Int
+    init?(name: String, quantity: Int) {
+      // 如果这里失败，就返回了，不会执行 self.quantity = quantity以后的代码
+        if quantity < 1 { return nil }
+        self.quantity = quantity
+        super.init(name: name) // 向上委托给父类
+    }
+}
+```
+
+
+
+### 重写可失败构造器
+
+和其他的构造器一样，子类可以重写父类的可失败构造器。并且可以在重写时重写定义为是否可失败。
+
+```swift
+class Document {
+    var name: String?
+    init() {}
+    init?(name: String) {
+        self.name = name
+        if name.isEmpty { return nil }
+    }
+}
+
+class AutomaticallyNamedDocument: Document {
+    override init() {
+        super.init()
+        self.name = "[Untitled]"
+    }
+    override init(name: String) {
+        super.init()
+        if name.isEmpty {
+            self.name = "[Untitled]"
+        } else {
+            self.name = name
+        }
+    }
+}
+```
+
+上面代码中，`AutomaticallyNamedDocument`重写了`Document`的可失败构造器·`init?(name: String)`并且将它定义为非可失败的构造器`override init(name: String)`。这里`AutomaticallyNamedDocument`提供了一个默认的名字，这样可失败很合理。
+
+
+
+
+
+### 必要构造器
+
+在类的构造器前添加 required  修饰符来表明所有该类的子类都必须实现该构造器：
+
+```swift
+class Fruit{
+    var name: String
+    required init(name: String){
+        self.name = name
+    }
+    
+    required convenience init(){
+        self.init(name: "水果")
+    }
+}
+```
+
+**Fruit的子类添加required构造器分两种情况:**
+
+* 因为如果子类没有实现任何指定构造器，那么就会继承父类的所有的构造器，包括required 修饰的构造器，这个是就不需要在子类无需显式提供必要构造器的实现，如下：
+
+```swift
+  
+  class Pear: Fruit {
+    var weight: Double = 0.0
+}
+
+```
+
+* 当子类无法从父类中继承等到required的构造器时，必须显示提供required修饰的必要构造器。当子类重写父类的必要初始化器时，必须在子类的初始化器前同样添加 required 修饰符以确保当其它类继承该子类时，该初始化器同为必要初始化器。在重写父类的必要初始化器时，不需要添加override 修饰符，如下:
+
+```swift
+
+class Apple: Fruit {
+    var sweet: String = ""
+    
+    init(sweet:String){
+        self.sweet = sweet
+        super.init(name: "apple")
+    }
+    
+    required init(name: String) {
+        self.sweet = ""
+        super.init(name: name)
+    }
+}
+
+```
+
+### 通过闭包和函数来设置属性的默认值
+
+如果在为一个属性设置初始值的时候，这个初始值比较复杂(或者在某些情况无法直接获得)，这个是时候可以通过执行一个闭包或者函数来返回一个需要的初始值。这样的闭包或函数在初始化过程中会被调用，并且它的返回值就会作为属性的默认值。
+
+下面的代码框架展示了闭包是如何提供默认值给属性的：
+
+```swift
+class SomeClass {
+    let someProperty: SomeType = {
+        // create a default value for someProperty inside this closure
+        // someValue must be of the same type as SomeType
+        return someValue
+    }()
+}
+```
+
+一个简单的具体例子:
+
+```swift
+class Alin {
+    let manyAlin:[String] = {
+        var alines:[String] = []
+        for _ in 1...100 {
+            alines.append("alin")
+        }
+        return alines;
+    }()
+}
+
+let alines = Alin().manyAlin
+```
+
+这样可以简单地添加一个默认有100个“alin”字符串的数组，不然也可以直接赋值
+
+```swift
+let manyAlin:[String] = ["alin","alin","alin",......]//......表示还有97个alin
+```
+
+不过要注意区分：
+
+```swift
+class Alin {
+    var manyAlin:()->[String] = {
+        var alines:[String] = []
+        for _ in 1...100 {
+            alines.append("alin")
+        }
+        return alines
+    }
+}
+let alines = Alin().manyAlin
+let alinesArray = alines()
+```
+
+闭包花括号的结尾跟一个没有参数的圆括号，告诉 Swift 立即执行闭包。如果没有这对圆括号，你就会把闭包作为值赋给了属性。
+
+> 如果你使用了闭包来初始化属性，请记住闭包执行的时候，实例初始化的第一个阶段没有完成。这就意味着你不能在闭包里读取任何其他的属性值，即使这些属性有默认值。你也不能使用隐式 self 属性，或者调用实例的方法。
+
+### 总结
+
+Swift的初始化内容的确很多，但是感觉都是非常自然合理。所有规则的核心目的就是：
+
+* **在实例化后(有效使用前),实例的所有存储属性必须有默认值(无论是确定的还是可选的)**
+
+这也是Swift安全性的体现。
+
+在核心目的的前提下对初始化构造器进行了明显的区分，并添加了对应的关键字：override，required，convince 等，明确了各种初始化构造器的职责。
+
+* 指定构造器负责核心的初始化工作
+* 便利构造器为一些特定的初始化提供便利
+* 初始化失败构造器，对初始化的进行了结果或者过程提供了漏斗功能
+* 必要构造器就好像是父类和子类之间的协议，要继承必须实现required的方法
+* 通过闭包和函数来设置属性的默认值的功能则是锦上添花(尤其对于一些复杂的默认值）
+
+笔者喜欢安全高效的规则，Swift这些真的很符合笔者的胃口。希望大家也会喜欢。😁

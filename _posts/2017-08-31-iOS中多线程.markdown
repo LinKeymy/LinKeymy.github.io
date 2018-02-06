@@ -238,9 +238,9 @@ CPU调度线程时，线程就进入到运行状态，执行相应的方法。
 在深入理解并使用 GCD 前，你应该先掌握下面的知识点：
 
 DispatchQueue 是执行任务的强大工具，允许你同步或异步地执行任意代码block/closure。原先使用单独线程执行的所有任务都可以替换为使用DispatchQueue。 而DispatchQueue最大的优点在于使用简单，而且更加高效。我们使用函数或 block/closure 对象来定义任务，并添加到DispatchQueue。DispatchQueue是类似于对象的结构体，管理你提交给它的任务，而且都是 先进先出的数据结构。因此
-| 类型 | 描述 |
-| :-- | :-- |
-| 串行队列 |  
+| 类型   | 描述   |
+| :--- | :--- |
+| 串行队列 |      |
 <div>每次只执行一个任务，按任务添加顺序执行(FIFO)。当前正在执行的任务在独立的线程中运行(不同任务的线程可能不同)，Dispatch Queue 管理了这些线程。 通常串行 queue 主要用于对特定资源的同步访问（它比锁更轻量好用）。 你可以创建任意数量的串行 queues，虽然每个 queue 本身每次只能执行一个任务，但是各个 queue 之间是并发执行的</div>
 
  |
@@ -251,12 +251,12 @@ DispatchQueue 是执行任务的强大工具，允许你同步或异步地执行
 | 主队列 | 全局可用的串行 queue，在应用主线程中执行任务。这个 queue 与应用的 RunLoop 交叉执行，通常用于应用的关键同步点。 |
  queue 中的任务总是以添加的顺序开始执行。GCD提供了几种DispatchQueue。
 
-> 
-`DispatchQueue`的几个关键点:
-`DispatchQueue` 相对其它 `DispatchQueue`并发地执行任务（不同的 queue 不相互影响），串行化任务只能在同一个 `DispatchQueue` 中实现。
-系统决定了同时能够执行的任务数量，应用在 100 个不同的 queues 中启 动 100 个任务，并不表示 100 个任务全部都在并发地执行(除非系统拥有 100 或更多个核)。
-系统在选择执行哪个任务时，会考虑 queue 的优先级。
-queue 中的任务必须在任何时候都准备好运行，注意这点和后面要讲到的 Operation对象不同。
+>
+> `DispatchQueue`的几个关键点:
+> `DispatchQueue` 相对其它 `DispatchQueue`并发地执行任务（不同的 queue 不相互影响），串行化任务只能在同一个 `DispatchQueue` 中实现。
+> 系统决定了同时能够执行的任务数量，应用在 100 个不同的 queues 中启 动 100 个任务，并不表示 100 个任务全部都在并发地执行(除非系统拥有 100 或更多个核)。
+> 系统在选择执行哪个任务时，会考虑 queue 的优先级。
+> queue 中的任务必须在任何时候都准备好运行，注意这点和后面要讲到的 Operation对象不同。
 
 ### 未完待续，先给出基本的提纲和简介，有空再补充完善。
 
@@ -308,7 +308,7 @@ http://www.cnblogs.com/supercheng/archive/2012/11/26/singlemodal.html
   @一条线程将数据传递给另外一条线程
 
   @在一条现场执行任务时，转到另外一条线程
-  
+
   dispatch_async(
 
 dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -325,6 +325,12 @@ dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 
 #### 线程的资源抢夺 (多线程带来的问题，解释线程同步和使用)
+
+
+
+
+
+
 
 
 

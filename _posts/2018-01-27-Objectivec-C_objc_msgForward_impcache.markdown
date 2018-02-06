@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Objectivec-C:_objc_msgForward_impcache
+title: Objective-C:_objc_msgForward_impcache
 subtitle: 
 author: JackLin
 date: 2018-01-27 14:49:22 +0800
@@ -47,7 +47,7 @@ extern id _objc_msgForward_impcache(id, SEL, ...);
 >
 > * **想直接转发一个对象，实现NSObject协议中的`forwardingTargetForSelector：`**
 >
-> 
+>
 
 >Returns the object to which unrecognized messages should first be directed.
 >

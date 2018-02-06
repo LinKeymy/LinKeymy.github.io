@@ -1,0 +1,180 @@
+---
+layout: post
+title: Swift:字符串
+subtitle: 
+author: JackLin
+date: 2018-02-04 20:23:52 +0800
+---
+
+
+
+### 字符串
+
+#### 多行字符串的Tips
+
+* 多行字符串字面量是用三个双引号引起来的一系列字符：
+
+```swift
+let alin = """
+Hi,
+ALin
+"""
+```
+
+
+
+* 多行字符串可以缩进以匹配周围的代码。双引号（ """ ）前的空格会告诉 Swift 其他行前应该有多少空白是需要忽略的。比如说，尽管下面函数中多行字符串字面量缩进了，但实际上字符串不会以任何空白开头。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/multilineStringWhitespace_2x.png)
+
+* 多行字符串中界定符(结束的""")必须在所有行的前面或者对齐：
+
+```swift
+let quotation = """
+The White Rabbit put on his spectacles.  "Where shall I begin,
+please your Majesty?" he asked.
+
+"Begin at the beginning," the King said gravely, "and go on
+till you come to the end; then stop.\n"
+"""
+
+let multiline = """
+        The White Rabbit put on his spectacles.  "Where shall I begin,
+        please your Majesty?" he asked.
+
+"Begin at the beginning," the King said gravely, "and go on
+till you come to the end; then stop.\n"
+
+        """
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/multilineStringdelimiter.png)
+
+#### String和Character
+
+* String可以使用append函数来追加一个Character字符，或者一个字符串String
+
+
+* 不能把 String或者 Character追加到已经存在的 Character变量当中，因为 Character值能且只能包含一个字符。
+
+#### 字符串插值
+
+字符串插值是一种从混合常量、变量、字面量和表达式的字符串字面量构造新 String值的方法。每一个你插入到字符串字面量的元素都要被一对圆括号包裹，然后使用反斜杠前缀：
+
+```swift
+let multiplier = 3
+let message = "\(multiplier) times 2.5 is \(Double(multiplier) * 2.5)"
+// message is "3 times 2.5 is 7.5"
+```
+
+
+
+#### 字符串字面量中的特殊字符
+
+* 转义特殊字符:   \0 (空字符)， \\ (反斜杠)， \t (水平制表符)， \n (换行符)， \r(回车符)， \" (双引号) 以及\' (单引号)；
+* 任意的 Unicode 标量：写作 \u{n}，里边的 n是一个 1-8 个与合法 Unicode 码位相等的16进制数字。
+
+
+
+#### 扩展字形集群
+
+每一个 Swift 的 Character类型实例都表示了单一的*扩展字形集群*。扩展字形集群是一个或者多个有序的 Unicode 标量（当组合起来时）产生的单个人类可读字符。
+
+```swift
+let eAcute: Character = "\u{E9}" // é
+let e = "\u{65}"  //"e"
+let p = "\u{301}" //"́"
+let combinedEAcute: Character = "\u{65}\u{301}" // e
+```
+
+#### 字符统计
+
+要在字符串中取回 `Character值的总数`，使用字符串的 count属性：
+
+> **Character值的总数**
+
+```Swift
+var word = "cafe"
+print("the number of characters in \(word) is \(word.count)")
+//the number of characters in cafe is 4
+```
+
+Swift 为 Character值使用的扩展字形集群意味着字符串的创建和修改可能不会总是影响字符串的字符统计数。
+
+```swift
+var word = "cafe"
+print("the number of characters in \(word) is \(word.count)")
+
+var newword = word + "\u{301}"
+print("the number of characters in \(newword) is \(newword.count)")
+
+word.append("\u{301}")
+print("the number of characters in \(word) is \(word.count)")
+
+//the number of characters in cafe is 4
+//the number of characters in café is 4
+//the number of characters in café is 4
+```
+
+> 在word中追加`"\u{301}"`后`characters`的个数还是不会变的
+
+#### 访问和修改字符串
+
+* 使用索引index访问字符串
+
+每一个 String值都有相关的*索引类型*， String.Index，它相当于每个 Character在字符串中的位置。不同的字符会获得不同的内存空间来储存，所以为了明确哪个 Character 在哪个特定的位置，你必须从 String的开头或结尾遍历每一个 Unicode 标量。因此，Swift 的字符串不能通过整数值索引。应该使用startIndex，endIndex属性以及index(before:)，index(after:)和index(_:offsetBy:)等方法来访问。
+
+```swift
+let greeting = "Guten Tag!"
+greeting[greeting.startIndex]
+// G
+greeting[greeting.index(before: greeting.endIndex)]
+// !
+greeting[greeting.index(after: greeting.startIndex)]
+// u
+let index = greeting.index(greeting.startIndex, offsetBy: 7)
+greeting[index]
+// a
+```
+
+* 插入单个字符或者字符串
+
+要给字符串的特定索引位置插入字符，使用 insert(_:at:)方法
+
+```swift
+var welcome = "hello"
+welcome.insert("!", at: welcome.endIndex)
+// welcome now equals "hello!"
+```
+
+要插入另一个字符串的内容到特定的索引，使用 insert(contentsOf:at:) 方法
+
+```swift
+var welcome = "hlo"
+welcome.insert(contentsOf: "el", at: "h".endIndex)
+// welcome now equals "hello"
+```
+
+* 删除字符串
+
+要从字符串的特定索引位置移除字符，使用 remove(at:)方法
+
+```swift
+welcome.remove(at: welcome.index(before: welcome.endIndex))
+```
+
+另外要移除一小段特定范围的字符串，使用removeSubrange(_:) 方法
+
+```swift
+welcome.removeSubrange(range)
+```
+
+##  子字符串Substring
+
+* String 和 Substring 都遵循[ StringProtocol](https://developer.apple.com/documentation/swift/stringprotocol) 协议，也就是说它基本上能很方便地兼容所有接受 StringProtocol 值的字符串操作函数。你可以无差别使用 String 或 Substring 值来调用这些函数。
+* 与字符串类似，每一个子字符串都有一块内存区域用来保存组成子字符串的字符。字符串与子字符串的不同之处在于，作为性能上的优化，子字符串可以重用一部分用来保存原字符串的内存，或者是用来保存其他子字符串的内存。（字符串也拥有类似的优化，但是如果两个字符串使用相同的内存，他们就是等价的。）这个性能优化意味着在你修改字符串或者子字符串之前都不需要花费拷贝内存的代价。如同上面所说的，子字符串并不适合长期保存——因为它们重用了原字符串的内存，只要这个字符串有子字符串在使用中，那么这个字符串就必须一直保存在内存里。
+
+
+
+
+

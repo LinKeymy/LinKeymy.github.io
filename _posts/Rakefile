@@ -23,5 +23,5 @@ task :new do
             file.puts "date: #{Time.now}"
             file.puts "---"
     end
-    exec "open -a /Applications/MacDown.app/ #{@post_name}"
+    exec "open -a /Applications/Typora.app/ #{@post_name}"
 end

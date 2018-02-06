@@ -1,0 +1,277 @@
+---
+layout: post
+title: HTML和CSS一些基本概念
+subtitle: 
+author: JackLin
+date: 2018-02-02 18:12:45 +0800
+---
+
+
+
+### HTML标签的分类
+
+- 块级标签（block）
+  - 独占一行
+  - 可以随意设置宽度和高度
+  - 如: div 、p、h1-6、ul、li等
+
+
+- 行内标签 （inline）
+  - 多个行内标签同时显示在一行
+  - 宽度和高度取决于内容
+  - 如：span、a、label等
+- 行内-块级标签（inline-block）
+  -  多个行内-块级标签可以显示在同一行
+  -  可以随意设置宽度和高度
+  -  如: input、button等
+
+上面“如”的引用的标签时在html默认情况下的标签类型，在css中可以使用display属性来修改标签的类型,如将span标签的类型修改为行内-块级标签:
+
+```css
+span {
+    display: inline-block;
+}
+```
+
+
+
+### CSS 的样式（stylesheets）
+
+- 行内样式： 直接使用标签的style属性设置样式
+
+  > ```html
+  > <div style="background-color: red">在标签内设置style</div>
+  > ```
+
+- 页内样式： 在当前页面的头部使用style标签设置样式(使用选择器定位)
+
+  ```html
+  <head>
+  <style>
+      /*在头部使用style设置所有的div背景色都为red*/
+      div {
+         background-color: red;
+      }
+  </style>
+  </head>
+  ```
+
+- 外部样式：在CCS文件中设置，使用link标签引入CSS文件的内容
+
+  - 在html文件中
+
+  ```html
+  <head>
+  <link rel="stylesheet" href="alin.css">
+  </head>
+  ```
+
+  - 在alin.css文件中
+
+  ```css
+      div {
+      background-color: red;
+      }
+  ```
+
+### 盒子模型(类似快递包装的盒子)
+
+web中使用的每一个标签都可以看成一个盒子，每个盒子有四个属性
+
+- content(内容)
+  - 盒子里面装的东西(如文字图片等)
+- border(盒子的厚度)
+  - 每个盒子都有自己的物理厚度
+- padding(盒子与内容间的距离)
+  - 可看作盒子与内容直接放了填充物
+- margin(盒子与其他盒子的距离)
+  - 每个盒子都可以设置和其他盒子间的距离
+
+附图一张:
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/html_css_box_model.png)
+
+> box-sizing:
+>
+> 盒子模型有content-box和border-box,当box-sizing:为content-box时设置的大小属性为内容的大小。border-box时设置的大小为盒子的大小，这种情况下设置padding的时候会挤压内容的空间。content的空间就会因为padding的变大而变小也就是反比例变化。
+
+> ```css
+> width: 50px;
+> padding-left: 10px;
+> padding-right: 10px;
+> box-sizing: content-box;
+> ```
+
+
+
+### CSS选择器的类型
+
+#### 1.选择器的基本概念
+
+- 选择器的作用: 选择对应的标签，设置样式
+
+- 通用格式: (有两部分)
+
+  - 查找标签
+  - 设置标签属性
+
+  ```css
+  查找标签 {
+    设置属性
+  }
+  ```
+
+  ​
+
+#### 2. 常见选择器的类型
+
+- 标签选择器: 根据标签名找到对应的标签
+
+  > 标签名 {
+  >
+  > ​	属性设置
+  >
+  > }
+
+```Css
+body {
+    background-size: cover;
+}
+```
+
+- 类选择器： 根据类名找到对应的选择器
+
+  - 每一个标签可以设置一个类名，属性为: class
+
+  > .类名 {
+  >
+  > ​	属性设置
+  >
+  > }
+
+```html
+<div class = "user">我是html文件中的内容</div>
+```
+
+```css
+.user { /*css*/
+    height: 38px;
+}
+```
+
+- id选择器: 更加标签的id，找到标签
+
+  * 每个标签都有一个id属性，而且id是唯一的
+
+> `#id {
+>
+> ​	属性设置
+>
+> }
+
+```html
+<div id = "myId">我是html文件中的内容</div>
+```
+
+```css
+#myId { /*css*/
+    height: 38px;
+}
+```
+
+> id = "myId" 标签被设置height: 38px
+
+- 并列选择器： 多个选择器使用 `,`隔开，同时设置多个标签
+
+  - 并列选择器的使用，相当于逻辑或
+
+  > 选择器1, 选择器2,选择器3 {
+  >
+  > ​	属性设置
+  >
+  > }
+
+  ```html
+  <div id = "myId">我是html文件中的内容</div>
+  <div class = "user">我是html文件中的内容</div>
+  ```
+
+  ```css
+  .user,#myId { /*css*/
+      height: 38px;
+  }
+  ```
+
+  > 这样class="user"和id = "myId" 两个标签都被设置height: 38px
+
+- 复合选择器：标签表示范围从大到小开始排练，同时满足多个条件的标签被选择设置属性。
+
+  - 复合选择器的使用，相当于逻辑与
+
+  ```html
+  <div id = "myId">我是html文件中的内容</div>
+  <div class = "user">我是html文件中的内容</div>
+  ```
+
+  ```css
+  div.user { /*css*/
+      height: 38px;
+  }
+  ```
+
+  > 这样就只有class="user"这个标签被设置height: 38px
+
+- 后代选择器: 标签里面嵌套其他的选择器，被嵌套在里面的为后代，外面的为父代
+
+  - 后代选择器就是按照标签的层级结构进行定位标签
+
+> 选择器1   选择器2  选择器3  { /* 选择器之间使用空格隔开*/
+>
+> ​	属性设置
+>
+> }
+
+```html
+<div class = "user">我是div
+     <img src="imgs/icon_alin.png">
+</div>
+```
+
+```css
+.user img {
+  	height = 100px;
+}
+```
+
+> class = "user"里面的img标签的高度被设置为：height = 100px;
+
+- 直接后代选择器：直接后代选择器和后代选择器一样都是按照标签的层级结构进行定位标签，不同的是，后代选择器作用于所有满足条件的后代，直接后代仅仅作用于下一代。
+
+> 父选择器>后代择器  {
+>
+> ​	属性设置
+>
+> }
+
+```html
+<div class = "user">
+     <img src="imgs/icon_alin.png">
+  	<div class = "pwd">
+     	<img src="imgs/icon_alin0002.png">
+	</div>
+</div>
+```
+
+```css
+.user>img {
+  	height = 100px;
+}
+```
+
+> 这里使用直接后代选择器仅仅作用于 src="imgs/icon_alin.png"这张图片，不会选择到src="imgs/icon_alin0002.png"这样图片进行设置。
+
+- 伪类
+
+focus和hover都是相当于确定某个类或者对象的一种状态，对处于这个状态时候进行修饰
+
+比如iOS中UIButton，UITextFile等等都会根据不同的状态进行额外的处理(高亮或者换图片等)
