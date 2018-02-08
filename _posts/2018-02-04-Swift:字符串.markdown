@@ -169,10 +169,14 @@ welcome.remove(at: welcome.index(before: welcome.endIndex))
 welcome.removeSubrange(range)
 ```
 
-##  子字符串Substring
+#### 子字符串Substring
 
 * String 和 Substring 都遵循[ StringProtocol](https://developer.apple.com/documentation/swift/stringprotocol) 协议，也就是说它基本上能很方便地兼容所有接受 StringProtocol 值的字符串操作函数。你可以无差别使用 String 或 Substring 值来调用这些函数。
 * 与字符串类似，每一个子字符串都有一块内存区域用来保存组成子字符串的字符。字符串与子字符串的不同之处在于，作为性能上的优化，子字符串可以重用一部分用来保存原字符串的内存，或者是用来保存其他子字符串的内存。（字符串也拥有类似的优化，但是如果两个字符串使用相同的内存，他们就是等价的。）这个性能优化意味着在你修改字符串或者子字符串之前都不需要花费拷贝内存的代价。如同上面所说的，子字符串并不适合长期保存——因为它们重用了原字符串的内存，只要这个字符串有子字符串在使用中，那么这个字符串就必须一直保存在内存里。
+
+### #Todo:
+
+String还有很多知识可以探究，不过这里暂时告一段落，后续会回头补上 unicode和不同View等和String相关的更多细节内容。
 
 
 
