@@ -1,6 +1,6 @@
 ---
 layout: post
-title: JavaScri相关的一些基本内容
+title: JavaScript相关的一些基本内容
 subtitle: 
 author: JackLin
 date: 2018-02-03 16:19:52 +0800
