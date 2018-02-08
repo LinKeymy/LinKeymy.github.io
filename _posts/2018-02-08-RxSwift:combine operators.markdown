@@ -20,7 +20,7 @@ func example(_ description: String,
 }
 ```
 
-#### startWith
+### startWith
 
 `startWith`为特定的事件序列，添加前置条件。比如每次呼叫(订阅)*ALin*的时候都先说*Hello*:
 
@@ -43,9 +43,7 @@ example("startWith") {
 
 > 需要注意的是**startWith中的事件值的类型，和它后续的事件值类型，必须是相同的**。上面的例是`String`，否则，会导致编译错误。
 
-
-
-#### concat
+### concat
 
 `concat`以把两个并行的Observable合并起来串行处理,比如下面使用concat串联sequenceA和sequenceB，实现**先处理完queueA中的事件之后，再开始处理queueB中的事件**
 
@@ -91,7 +89,7 @@ sequenceB.onCompleted()
 
 > *Tips:* 除了接受数组的全局`concat` operator，Observable自身也有一个`concat`方法，允许我们合并两个Observables：let sequence = sequenceA.concat(sequenceB.asObservable())
 
-#### merge
+### merge
 
 世界往往是平衡互补的。既然有了‘’串行以‘合并，那么也少不了“并行”合并所有的Observable。`merge` operator就是用来实现“并行”合并。只要合并进来的Observable中有事件发生，我们就可以订阅到，而无需等待前置的Observable结束。请把之前合并Observable的代码改成这样：
 
@@ -102,7 +100,7 @@ let sequence = Observable
 
 ![有帮助的截图]({{ site.url }}/assets/postsImages/rxswift_combine_merge.png)
 
-执行一下，我们就会单纯的按照事件发生的顺序，依次订阅到*A1 -> A2 -> B1 -> A3 -> Completed -> Disposed*事件了。
+执行一下，我们就会单纯的按照事件发生的顺序，依次订阅到*A1 -> A2 -> B1 ->B2 -> Completed -> Disposed*事件了。
 
 #### merge的最大并行订阅量maxConcurrent
 
