@@ -442,6 +442,6 @@ KVC在容器类中的应用主要包括：NSDictionary、NSArray、NSSet三种�
 > 2. 容器类比如NSArray, NSSet, NSDictionary不能包含nil值，需要使用NSNull替换（一个表示nil值的单例类） 
 > 3. 方法dictionaryWithValuesForKeys:和setValuesForKeysWithDictionary:会自动转换NSNull和nil，不需要过多关注
 
-到这相信大家对KVC都有了一个和直观的了解，可以考虑在平时的开发中将KVC用起来。这篇文章有些过长，能看到是需要有信仰。非常感谢！
+到这相信大家对KVC都有了一个直观的了解，可以考虑在平时的开发中将KVC用起来。这篇文章有些过长，能看到最后的都是有信仰的。非常感谢！
 
 ### The end
