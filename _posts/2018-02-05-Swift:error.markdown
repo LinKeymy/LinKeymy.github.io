@@ -8,7 +8,7 @@ date: 2018-02-05 22:09:36 +0800
 
 ### 前言
 
-本来打算这篇文章仅仅是对Swift的可恢复错误语法的一个简化归纳。后来看到王巍的[关于 Swift Error 的分类](https://onevcat.com/2017/10/swift-error-category/)的这篇文章，改变了主意。这里打算先截取他前面的一部分内容，然后增加错误处理syntax相关的内容。
+打这篇文章仅仅介绍在开发编码中国Swift错误的几个分类，然后实践Swift错误处理syntax相关的内容。
 
 > 关键词：Swift错误的分类，Swift可恢复错误语法，throw ，Error，fatalError，assert ，try， do-catch
 
