@@ -1,6 +1,6 @@
 ---
 layout: post
-title: RxSwift:Filter Operator
+title: RxSwift:Filter Operators
 subtitle: 
 author: JackLin
 date: 2018-02-08 15:55:44 +0800
