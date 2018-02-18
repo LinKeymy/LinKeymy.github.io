@@ -8,7 +8,7 @@ date: 2018-02-05 22:09:36 +0800
 
 ### 前言
 
-打这篇文章仅仅介绍在开发编码中国Swift错误的几个分类，然后实践Swift错误处理syntax相关的内容。
+这篇文章仅仅介绍在开发编码中国Swift错误的几个分类，然后实践Swift错误处理syntax相关的内容。
 
 > 关键词：Swift错误的分类，Swift可恢复错误语法，throw ，Error，fatalError，assert ，try， do-catch
 
