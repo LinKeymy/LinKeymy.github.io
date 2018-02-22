@@ -1,9 +1,459 @@
 ---
 layout: post
-title: Block
+title: Objective-C:block
 subtitle: block复习
 author: JackLin
-date: 2018-01-13 19:43:59 +0800
+date: 2017-01-13 19:43:59 +0800
 ---
 
->
+### 前言
+
+**闭包**（英语：Closure），又称**词法闭包**（Lexical Closure）或**函数闭包**（function closures），是引用了自由变量的函数。这个被引用的自由变量将和这个函数一同存在，即使已经离开了创造它的环境也不例外。所以，有另一种说法认为闭包是由函数和与其相关的引用环境组合而成的实体。闭包在运行时可以有多个实例，不同的引用环境和相同的函数组合可以产生不同的实例。在Objective-C能够实现上述功能的实体就是我们常用常说的block。那么Objective-C的block是实现引用并持有自由变量呢？不过在进一步探究前，想看看如何正确书写一个block吧。
+
+### 正确声明一个block
+
+**作为一个property属性:**
+
+```objective-c
+@property (nonatomic, copy, nullability) returnType (^blockName)(parameterTypes);
+```
+
+**作为一个方法声明的参数**
+
+```objective-c
+-(void)someMethodThatTakesABlock:(returnType (^nullability)(parameterTypes))blockName;
+```
+
+**作为一个方法调用的参数**
+
+```objective-c
+[someObject someMethodThatTakesABlock:^returnType (parameters) {...}];
+```
+
+**作为一个typedef的类型定义**
+
+```objective-c
+typedef returnType (^TypeName)(parameterTypes);
+TypeName blockName = ^returnType(parameters) {...};
+```
+
+在Objective-C中全部正确书写一个block真是不容易，不知道其他人能不能记住写对，反正我是记不住的。syntax真的是太恶心了呢。
+
+### block真实面目一览
+
+回忆了如何书写一个语义正确的block，那么block到底是什么，看看下面的main.m中的代码：
+
+```objective-c
+int main() {
+    void (^blk)(void) = ^{
+        printf("fucking Block\n");
+    };
+    blk();
+    return 0;
+}
+```
+
+cd到main.m所在文件夹在终端执行以下命令:
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_struct_detail.png)
+
+>  输入`clang -rewrite-objc main.m`，就会在当前文件夹内自动生成对应的main.cpp文件。
+
+打开main.cpp查看C++代码，找到上面写的main函数，变成这样子了:
+
+```c
+int main() {
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA));
+    ((void (*)(__block_impl *))((__block_impl *)blk)->FuncPtr)((__block_impl *)blk);
+    return 0;
+}
+```
+
+继续查看`__main_block_impl_0`、`__main_block_func_0`和`__main_block_desc_0_DATA`的内容
+
+```c
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  //结构体__main_block_impl_0的构造函数，也就是Block构造函数
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int flags=0) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+
+// 执行block时会被调用的函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+        printf("fucking Block\n");
+    }
+// block的描述信息
+static struct __main_block_desc_0 {
+  size_t reserved;   //保留字段，以后使用
+  size_t Block_size; //block的大小
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+```
+
+
+
+可以看到`main_block_impl_0`函数的调用就是用来构造**__main_block_impl_0**结构体。也就是说block结构体的值是通过**__main_block_impl_0**构造出来的。所以block对应的结构体有两个成员变量和一个构造函数：
+
+- struct __block_impl impl
+- struct __main_block_desc_0* Desc
+
+第一个成员变量impl，它是实际的函数指针，它指向__main_block_func_0。来看一下它的结构体的声明：
+
+```c
+struct __block_impl {
+  void *isa;
+  int Flags;
+  int Reserved;   //保留字
+  void *FuncPtr;  //函数指针，指向__main_block_func_0
+};
+```
+
+第二个是成员变量是指向__main_block_desc_0结构体的Desc指针，是用于描述当前这个block的附加信息的，包括结构体的大小等等信息
+
+```c
+static struct __main_block_desc_0 {
+  size_t reserved;   //保留字段，以后使用
+  size_t Block_size; //block的大小
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+```
+
+> 请留意，他们两个都是被声明为static的类型
+
+第三个是__main_block_impl_0结构体的构造函数，是用于创建block的。
+
+```c
+__main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int flags=0) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+```
+
+在这个结构体的构造函数里，isa指针保持这所属类的结构体的实例的指针。__main_block_imlp_0结构体就相当于Objective-C类对象的结构体，_NSConcreteStackBlock相当于block的结构体实例,**也就是说block其实就是Objective-C对于闭包的对象实现**。
+
+一切都已经明了,回到main函数，:
+
+```c
+int main() {
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA));
+    ((void (*)(__block_impl *))((__block_impl *)blk)->FuncPtr)((__block_impl *)blk);
+    return 0;
+}
+```
+
+1. 调用**__main_block_impl_0函数**，传入**__main_block_func_0**和**&__main_block_desc_0_DATA**构造出block的结构体，&__main_block_impl_0取结构体的地址赋值给blk。
+2. 使用**(__block_impl *)blk)->FuncPtr**调用**__main_block_func_0**函数。
+
+### block截获自动变量和对象
+
+在查看这一部分内容前，先回顾一下各种变量：
+
+
+
+#### block捕获局部变量
+
+使用block的时候，不仅可以使用其内部的参数，还可以使用block外部的局部变量,如果你不是很熟悉block是如何访问外部的局部变量的话，开始可能会是你疑惑，比如:
+
+```c
+#import <stdio.h>
+int main() {
+    int a = 10;
+    int b = 10;
+    void (^blk)(void) = ^{
+        printf("inblock: a = %i, b = %i\n",a,b);
+    };
+    printf("outblock: a = %i, b = %i\n",a,b);
+    blk();
+    a += 10;
+    b +=20;
+    printf("outblock: a = %i, b = %i\n",a,b);
+    blk();
+    return 0;
+}
+```
+
+编译，链接运行上面的代码：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_local_01.png)
+
+我们可以看到，在外部修改a，b的值以后，再次调用block时，里面的打印仍然和之前是一样的。给人的感觉是，外部到局部变量和被block内部截获的变量并不是同一份。我们的感觉是正确吗？这个待会再探究，我们先试着在block内部修改局部变量a和b:
+
+```c
+int main() {
+    int a = 10;
+    int b = 10;
+    void (^blk)(void) = ^{
+        a += 5;
+        b += 5;
+    };
+    return 0;
+}
+```
+
+再次编译
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_local_02.png)
+
+可以看到，这样的情况下，局部变量，在block内部是不允许被修改的。
+
+综上所得:
+
+1. block可以捕获局部变量。
+2. 修改block外部的局部变量，block内部被截获的局部变量不受影响。
+3. 不允许修改block内部到局部变量。
+
+对于第2点，前面有猜测：外部到局部变量和被block内部截获的变量并不是同一份
+
+为了验证上面的猜测，通过C++的代码来看一下block在截获变量的时候都发生了什么：
+
+```c
+#import <stdio.h>
+
+int main() {
+    int dmy = 256;
+    int val = 10;
+
+    const char *fmt = "var = %d\n";
+
+    void (^blk)(void) = ^{
+        printf(fmt,val);
+    };
+
+    val = 2;
+    fmt = "These values were changed. var = %d\n";
+
+    blk();
+
+    return 0;
+}
+```
+
+对应的C++代码:
+
+```c++
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  const char *fmt;
+  int val;
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, const char *_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+  const char *fmt = __cself->fmt; // bound by copy
+  int val = __cself->val; // bound by copy
+
+        printf(fmt,val);
+    }
+
+static struct __main_block_desc_0 {
+  size_t reserved;
+  size_t Block_size;
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+int main() {
+    int dmy = 256;
+    int val = 10;
+
+    const char *fmt = "var = %d\n";
+
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, fmt, val));
+
+    val = 2;
+    fmt = "These values were changed. var = %d\n";
+
+    ((void (*)(__block_impl *))((__block_impl *)blk)->FuncPtr)((__block_impl *)blk);
+
+    return 0;
+}
+```
+
+block相关的内容较没有捕获外部变量前发生了如下变化，分开类看，先从__main_block_impl_0结构体开始：
+
+```c
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  const char *fmt;
+  int val;
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, const char *_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+```
+
+1. __main_block_impl_0结构体多了两个和外部局部变量同名的成员`fmt`和`val`,可以断定block花括号内表达式中使用的自动变量（fmt，val）被作为成员变量追加到，block没有使用的自动变量不会被追加，如`dmy`变量。
+2. 在初始化block结构体实例时（请看**main_block_impl_0的构造函数），还需要截获的自动变量fmt和val来初始化**main_block_impl_0结构体实例，因为增加了被截获的自动变量，block的体积会变大。
+
+>  ：放在构造函数后，表示初始化列表。fmt(_fmt) 相当于fmt  = _fmt，不过效率比后者高。
+
+现在看看block函数体的__main_block_func_0
+
+```c
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+  const char *fmt = __cself->fmt; // bound by copy
+  int val = __cself->val; // bound by copy
+  printf(fmt,val);
+}
+```
+
+哦，原来在
+
+```c
+void (^blk)(void) = ^{
+     printf(fmt,val);
+};
+```
+
+中访问到的`fmt`,`val`是函数内部声明的局部变量。到这里就很明显回答了第2点的疑问: 在block中访问的变量和外部的局部变量不是同一个变量，仅仅是一个在block函数内部声明的和外面局部变量同名的变量而已。所以即使改变了外部的自动变量的值，也不会影响block内部的值。猜的没错。那么block有什么方法可以修改外部的布局变量吗？
+
+#### block修改局部变量
+
+我们知道，函数内部想要修改局部变量可以将变量的地址作为参数传入。同样block想要访问布局的变量也可以通过地址。那么又如何做可以让block捕获到局部变量的地址呢：将局部变量声明为静态变量即可。对应全局的变量一直存在程序中，block和其他函数一样，可以直接访问变量。比如
+
+```c
+int global_val = 1;
+static int static_global_val = 2;
+int main()
+{
+    static int static_local_val = 3;
+    
+    void (^blk)(void) = ^{
+        global_val *=2;
+        static_global_val *=2;
+        static_local_val *=2;
+    };
+    return 0;
+}
+```
+
+同样使用` clang -rewrite-objc main.m`命令转为对应的C++代码:
+
+```c
+int global_val = 1;
+static int static_global_val = 2;
+
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  int *static_local_val;
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int *_static_local_val, int flags=0) : static_local_val(_static_local_val) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+  int *static_local_val = __cself->static_local_val; // bound by copy
+
+        global_val *=2;
+        static_global_val *=2;
+        (*static_local_val) *=2;
+    }
+
+static struct __main_block_desc_0 {
+  size_t reserved;
+  size_t Block_size;
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+int main() {
+    static int static_local_val = 3;
+
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, &static_local_val));
+    return 0;
+}
+```
+
+较普通的局部变量不同，将局部变量声明为static的静态变量后block捕获的是变量的地址而不是变量的值：	`__main_block_impl_0`内部会声明一个和局部变量同名的指针类型，同时在构造函数中的初始化列表使用`static_local_val(_static_local_val)`,将局部变量的指针赋值给__main_block_impl_0结构体的成员`static_local_val`。
+
+```c
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  int *static_local_val; // 指针
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int *_static_local_val, int flags=0) : static_local_val(_static_local_val) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+```
+
+在执行blk对应的实现函数是如何访问行的变量呢 ，单独看看这种情况的`__main_block_func_0`:
+
+```c
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+  int *static_local_val = __cself->static_local_val; // bound by copy
+
+        global_val *=2;
+        static_global_val *=2;
+        (*static_local_val) *=2;
+    }
+```
+
+`__main_block_func_0`函数体内同样会创建一个局部变量，但是这次是一个指针类型的变量。并且它的初始值就是block捕获到外部变量的地址。对于全局的变量不管是否是静态的都是和普通函数一样直接访问。到此可以初步推断很执行block后block访问到的所有的值都会变成原来的2倍。下面打印地址和值来验证一下:
+
+```c
+int global_val = 1;
+static int static_global_val = 2;
+
+int main() {
+    static int static_local_val = 3;
+
+    void (^blk)(void) = ^{
+        global_val *=2;
+        static_global_val *=2;
+        static_local_val *=2;
+        printf("inblk_address: %p\n",&static_local_val);
+    };
+    blk();
+    printf("outblk_address: %p\n",&static_local_val);
+    printf("outblk: \nglobal_val = %i\n"
+                    "static_global_val = %i\n"
+                    "static_local_val = %i\n",
+            global_val,
+            static_global_val,
+            static_local_val);
+    return 0;
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_static_local_log.png)
+
+可以看到这时候block内部和外部打印`static_local_val`的地址是一样的，结果也和预料中的一样。这样可以得出结论:
+
+1. 静态变量：block捕获的是静态变量的地址，通过地址访问静态变量
+2. 全局变量：block直接访问
+3. 静态全局变量：block直接访问
+
+
+
+
+
+团有利
+
+团购返利，电商类，让每一个人都能找到更优惠的团购商品，让不相识的消费者共同享受物美价廉的服务，得到团购返利。
+
+
+
+
+
+
+
+
+
+
+
