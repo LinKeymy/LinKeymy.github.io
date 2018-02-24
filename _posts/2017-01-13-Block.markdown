@@ -440,20 +440,338 @@ int main() {
 3. 静态全局变量：block直接访问
 
 
+### 使用__block修饰局部变量
+
+__block关键字既可以用来修饰基本数据类型也可以用来修饰OC的对象。
+
+ #### __block修饰基本类型
+
+首先看看使用_block修饰基本数据类型的变量，下面是C代码
+
+```c
+int main() {
+    __block int intVal = 10;
+    void (^blk)(void) = ^ {
+        intVal++；
+    };
+    return 0;
+}
+```
+
+C++代码，的main函数
+
+```c
+int main() {
+    __attribute__((__blocks__(byref))) __Block_byref_intVal_0 intVal = {(void*)0,(__Block_byref_intVal_0 *)&intVal, 0, sizeof(__Block_byref_intVal_0), 10};
+    
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, (__Block_byref_intVal_0 *)&intVal, 570425344));
+    return 0;
+}
+```
+
+第一句:
+
+```c
+  __attribute__((__blocks__(byref))) __Block_byref_intVal_0 intVal = {(void*)0,(__Block_byref_intVal_0 *)&intVal, 0, sizeof(__Block_byref_intVal_0), 10};
+```
+
+可以发现原来声明的`int`类型的变量 `intVal`变成了`__Block_byref_intVal_0`类型。
+
+```c
+struct __Block_byref_intVal_0 {
+  void *__isa;
+__Block_byref_intVal_0 *__forwarding;
+ int __flags;
+ int __size;
+ int intVal;
+};
+```
+
+`{(void*)0,(__Block_byref_intVal_0 *)&intVal, 0, sizeof(__Block_byref_intVal_0), 10}`有两点需要关注一下:
+
+1. **intVal**：intVal结构体中的一个同名的变量持有原来的intVal变量。
+2. **forwarding**：forwarding成员指向的是intVal结构体本身。
+
+block对应的实现函数`__main_block_func_0`:
+
+```c
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+  __Block_byref_intVal_0 *intVal = __cself->intVal; // bound by ref
+
+        (intVal->__forwarding->intVal)++;
+
+}
+```
+
+在block函数内部通过__forwarding指针找到自身的结构体然后再访问结构体中的成员intVal。很明显这些访问都是通过指针引用实现的。
+
+看完了变量的结构体，现在去关注一下block结构体发生了什么变化:
+
+第二句:
+
+```c
+    void (*blk)(void) = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, (__Block_byref_intVal_0 *)&intVal, 570425344));
+    return 0;
+```
+
+**__main_block_impl_0**
+
+```c
+struct __main_block_impl_0 {
+  struct __block_impl impl;
+  struct __main_block_desc_0* Desc;
+  __Block_byref_intVal_0 *intVal; // by ref
+  __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, __Block_byref_intVal_0 *_intVal, int flags=0) : intVal(_intVal->__forwarding) {
+    impl.isa = &_NSConcreteStackBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+```
+
+block结构体的一个成员是上面说的外部block变量类型`__Block_byref_intVal_0`，这里也是通过指针来引用的。`__Block_byref_intVal_0 *intVal`指向的地址是inVal结构体的`__forwarding`的指向是一样的。
+
+**__main_block_desc_0**
+
+`__main_block_impl_0`中的成员`struct __main_block_desc_0* Desc`结构也发生了一些改变，尾部添加了两个函数指针copy和dispose分别引用了两个函数`__main_block_copy_0`和`__main_block_dispose_0`.这是由于在OC中，C结构体里不能含有被**strong修饰的变量，因为编译器不知道应该何时初始化和废弃C结构体。但是OC的运行时库能够准确把握Block从栈复制到堆，以及堆上的block被废弃的时机，在实现上是通过** `main_block_copy_0`函数和`__main_block_dispose_0`函数进行的:
+
+```c
+static struct __main_block_desc_0 {
+  size_t reserved;
+  size_t Block_size;
+  void (*copy)(struct __main_block_impl_0*, struct __main_block_impl_0*);
+  void (*dispose)(struct __main_block_impl_0*);
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0), __main_block_copy_0, __main_block_dispose_0};
+
+//_Block_object_assign相当于retain操作，将对象赋值在对象类型的结构体成员变量中。
+_Block_object_dispose相当于release操作。
+static void __main_block_copy_0(struct __main_block_impl_0*dst, struct __main_block_impl_0*src) {_Block_object_assign((void*)&dst->intVal, (void*)src->intVal, 8/*BLOCK_FIELD_IS_BYREF*/);}
+
+//_Block_object_dispose相当于release操作,释放对象
+static void __main_block_dispose_0(struct __main_block_impl_0*src) {_Block_object_dispose((void*)src->intVal, 8/*BLOCK_FIELD_IS_BYREF*/);}
+
+```
+
+`main_block_copy_0`函数和`__main_block_dispose_0`函数的调用时机是:
+
+* __main_block_copy_0:    从栈复制到堆时
+  * 调用block的copy函数时
+  * Block作为函数返回值返回时
+  * 将Block赋值给附有__strong修饰符id类型的类或者Block类型成员变量时
+  * 方法中含有usingBlock的Cocoa框架方法或者GCD的API中传递Block时
 
 
+* __main_block_dispose_0:   堆上的block被废弃时
+  * 谁都不再持有堆上的block时
 
-团有利
+到这里__block修饰的变量可以整理为如下实现结构:
 
-团购返利，电商类，让每一个人都能找到更优惠的团购商品，让不相识的消费者共同享受物美价廉的服务，得到团购返利。
+![有帮助的截图]({{ site.url }}/assets/postsImages/block__block_relation.png)
 
+#### __block修饰OC中的对象
 
+使用__block来修饰OC中的对象和修饰基本数据类型的的变量并没差异。比如修饰id类型的对象，对应的block变量结构体如下:
 
+```c
+struct __Block_byref_obj_0 {
+  void *__isa;
+__Block_byref_obj_0 *__forwarding;
+ int __flags;
+ int __size;
+ void (*__Block_byref_id_object_copy)(void*, void*);
+ void (*__Block_byref_id_object_dispose)(void*);
+ id obj;
+};
+```
 
+可以看到结构逻辑是一样的，都是有一变量持有了block捕获的变量。这里的是id obj。既然没什么区别这里就不重复去一一说明了。
 
+### 三种block
 
+在上面block的构造函数__main_block_impl_0中的isa指针指向的是&_NSConcreteStackBlock，它表示当前的Block位于栈区中。实际上，一共有三种类型的Block：
 
+| block的分类            | 存储域         | 拷贝效果     |
+| ---------------------- | -------------- | ------------ |
+| _NSConcreteStackBlock  | 栈             | 从栈拷贝到堆 |
+| _NSConcreteGlobalBlock | 程序的数据区域 | 什么也不做   |
+| _NSConcreteMallocBlock | 堆             | 引用计数增加 |
 
+#### _NSConcreteGlobalBlock
 
+GlobalBlock结构体实例保存在程序的数据存储区，所以可以在程序的任意位置通过指针来访问，它的产生情况：
 
+1.使用全局变量定义持有block，比如:
+
+```c
+void (^blk)(void) = ^{printf("Global Block\n");};
+
+int main() {
+    blk();
+    return 0;
+}
+```
+
+转为C++代码：
+
+```c
+struct __blk_block_impl_0 {
+  struct __block_impl impl;
+  struct __blk_block_desc_0* Desc;
+  __blk_block_impl_0(void *fp, struct __blk_block_desc_0 *desc, int flags=0) {
+    impl.isa = &_NSConcreteGlobalBlock;
+    impl.Flags = flags;
+    impl.FuncPtr = fp;
+    Desc = desc;
+  }
+};
+```
+
+> block结构体构造函数里面isa指针被赋予的是&_NSConcreteGlobalBlock
+
+2.使用全局变量定义持有block,没有用到外部变量肯定是_NSConcreteGlobalBlock，这点很好理解。不过只用到全局变量、静态变量的block也是_NSConcreteGlobalBlock。比如:
+
+```c 
+int global_val = 1;
+static int static_global_val = 2;
+int main() {
+    static int static_local_val = 3;
+    void (^blk)(void) = ^{
+        global_val *= 2;
+        static_global_val *= 2;
+        static_local_val *= 2;
+    };
+    NSLog(@"%@",blk);
+    return 0;
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_globalBlock.png)
+
+#### _NSConcreteStackBlock
+
+只用到外部局部变量、成员属性变量，且没有强指针引用的block都是StackBlock。StackBlock的生命周期由系统控制的，一旦返回之后，就被系统销毁了。block变量和__block变量复制到了堆上以后，则不再会受到变量作用域结束的影响了，因为它变成了堆block,block结构体的isa成员变量变成了`_NSConcreteMallocBlock`。
+
+```c
+int main() {
+    __block int temp = 10;
+	//block没有被引用
+    NSLog(@"%@",^{NSLog(@"*******%d %p",temp ++,&temp);});
+
+    return 0;
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_stackBlock.png)
+
+#### _NSConcreteMallocBlock
+
+在ARC环境下，平时见到最多的是_NSConcreteMallocBlock，是因为我们会对block有赋值操作，ARC下，block 类型通过=进行传递时，会导致调用objc_retainBlock->_Block_copy->_Block_copy_internal方法链。并导致 __StackBlock__ 类型的 block 转换为 __MallocBlock__ 类型。我们很少直接用copy。
+
+```c
+int main() {
+    __block int temp = 10;
+
+    void (^blk)(void) = ^{
+        NSLog(@"*******%d %p",temp ++,&temp);
+    };
+    NSLog(@"%@",blk);
+    return 0;
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block_mallocBlock.png)
+
+除了赋值传递会发生copy，在如下情况也是会发生的:
+
+- block作为函数值返回的时候
+- 部分情况下向方法或函数中传递block的时候
+  - Cocoa框架的方法而且方法名中含有usingBlock等时。
+  - Grand Central Dispatch 的API。
+
+那么__block变量在block执行copy操作后会发生什么:
+
+1. 任何一个block被复制到堆上时，__block变量也会一并从栈复制到堆上，并被该block持有。
+2. 如果接着有其他block被复制到堆上的话，被复制的block会持有**block变量，并增加**block的引用计数，反过来如果block被废弃，它所持有的__block也就被释放（不再有block引用它）。
+
+当栈上的block被copy到堆上的时候会有如下过程:
+
+1. 最初，**__block变量在栈上时，它的成员变量**forwarding指向栈上的__block变量结构体实例。
+2. 在**block被复制到堆上时，会将**forwarding的值替换为堆上的目标**__block变量用结构体实例的地址。而在堆上的目标**block变量自己的__forwarding的值就指向它自己。
+
+具体如图:
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/block__block_local_forwarding.png)
+
+### 总结
+
+#### 1.关于捕获外部变量
+
+* 对于非对象的变量来说
+
+  * 自动变量的值，被copy进了block，不带__block的自动变量只能在里面被访问，并不能改变值。
+
+    ![有帮助的截图]({{ site.url }}/assets/postsImages/blcok_non_local_copy.jpg)
+
+  * 带__block的自动变量 和 静态变量 就是直接地址访问。所以在Block里面可以直接改变变量的值。
+
+    ![有帮助的截图]({{ site.url }}/assets/postsImages/block_nonlocal_direct_link.jpg)
+
+* 对于对象的变量来说
+
+  * 不使用__block的，直接引用变量，没有多一层struct，可以访问，但是不可以修改引用。
+  * 使用__block的，多一层struct引用变量，可以访问,也可以修改引用。这种情况有一个应用于解决循环引用的问题:
+
+  ```objective-c
+  typedef void(^blk_t)(void);
+  @interface Person : NSObject
+  {
+      blk_t blk_;
+  }
+  @implementation Person
+  - (instancetype)init
+  {
+      self = [super init];
+      __block id temp = self;//temp持有self
+      
+      //self持有blk_
+      blk_ = ^{
+          NSLog(@"self = %@",temp);//blk_持有temp
+          temp = nil; // 这里赋值nil是对block变量temp结构体的赋值。
+      };
+      return self;
+  }
+  - (void)execBlc
+  {
+      blk_();
+  }
+  @end
+  ```
+
+  所以如果不执行blk_（将temp设为nil），则无法打破这个循环。
+
+  一旦执行了blk_，就只有
+
+  - self持有blk_
+  - blk_持有temp
+
+  使用__block 避免循环比较有什么特点呢？
+
+  - 通过__block可以控制对象的持有时间。
+  - 为了避免循环引用必须执行block，否则循环引用一直存在。
+
+#### 2.关于block的分类
+
+| block的分类            | 存储域         | 拷贝效果     |
+| ---------------------- | -------------- | ------------ |
+| _NSConcreteStackBlock  | 栈             | 从栈拷贝到堆 |
+| _NSConcreteGlobalBlock | 程序的数据区域 | 什么也不做   |
+| _NSConcreteMallocBlock | 堆             | 引用计数增加 |
+
+> _NSConcreteStackBlock类型会被copy到的情况:
+>
+> 1. block赋值给其他变量引用
+> 2. block作为函数值返回
+> 3. Cocoa框架的方法而且方法名中含有usingBlock
+> 4. Grand Central Dispatch 的API
 
