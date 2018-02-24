@@ -569,6 +569,8 @@ static void __main_block_dispose_0(struct __main_block_impl_0*src) {_Block_objec
 
 ![有帮助的截图]({{ site.url }}/assets/postsImages/block__block_relation.png)
 
+> ⚠️：虚线箭头表示值，实线表示引用，红色表示函数
+
 #### __block修饰OC中的对象
 
 使用__block来修饰OC中的对象和修饰基本数据类型的的变量并没差异。比如修饰id类型的对象，对应的block变量结构体如下:
