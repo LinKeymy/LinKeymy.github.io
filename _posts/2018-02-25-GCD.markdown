@@ -1,0 +1,344 @@
+---
+layout: post
+title: Grand Central Dispatch
+subtitle: GCD
+author: JackLin
+date: 2018-02-25 15:41:36 +0800
+---
+
+### 前言
+
+在iOS开发中，一共有四种多线程技术：pthread，NSThread，GCD，NSOperation：
+
+- pthread是C的跨平台技术，pthread和NSThread是面向线程开发的多线程技术，需要开发者自己去维护线程的生命周期，如线程的创建开启等操作，比较繁琐。比如NSThread：
+
+  ```c
+  NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil];
+  [thread start];
+  ```
+
+- GCD和NSOperation是面向队列开发的多线程技术，只需要将想要执行的任务追加到适当的队列可以了，其他的事情可以交给系统来做。比如GCD：
+
+  ```c
+  dispatch_async(
+  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+     // 执行耗时的异步操作...
+     dispatch_async(dispatch_get_main_queue(), ^{
+         // 回到主线程，执行UI刷新操作
+     });
+  });
+  ```
+
+### 同步函数和异步函数
+
+在GCD中向队列中追加任务的方式(函数)有两种:
+
+同步函数： 将任务同步派发到队列，任务添加到队列后，会等待任务完成后函数才返回。
+
+```c
+dispatch_sync(queue,taskBlock);
+```
+
+异步函数： 将任务异步派发到队列，不会等待任务完成，任务添加到队列后函数直接返回。
+
+```c
+dispatch_async(queue,taskBlock);
+```
+
+### 串行队列与并发队列
+
+> 队列都是FIFO，先进先出。无论是串行队列还是并发队列中的任务在出队的时候都是有顺序的。
+
+在GCD中，Dispatch Queue是任务等待派发的队列，按照任务（block）追加到队列里的顺序，先进先出派发到线程去执行处理。它分为如下两种:
+
+- Serial Dispatch Queue：串行派发队列
+  * 等待当前执行任务处理结束，然后才派发下一个任务。
+  * 任务需要等待，一条线程就能满足一个串行队列派发任务的特性。
+  * 只要一条就能搞定，所以最多开启一条异步线程。
+- Concurrent Dispatch Queue:并发派发队列
+  * 不等待当前执行任务处理结束，就派发下一个任务
+  * 任务不需要等待，派发任务时有可能开启新的线程，将任务派发到新的线程执行。
+  * 有可能开启N条线程来执行任务
+
+### Serial Dispatch Queue
+
+使用异步函数将任务追加到串行派发的队列，因为异步函数且队列不是当前线程，所以会开启新的一条线程来执行串行队列中的任务，每一个串行的队列都有一条对应的线程去处理队列中的任务：
+
+```c
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        dispatch_queue_t serialQueue =
+        dispatch_queue_create("com.alin.tasks", DISPATCH_QUEUE_SERIAL);
+        for (int i = 0; i < 5; i++) {
+            dispatch_async(serialQueue, ^{
+                printf("task id = %i in serialQueueof thread:%s \n"
+                       ,i,[NSThread currentThread].description.UTF8String);
+            });
+        }
+        return 0;
+    }
+}
+```
+
+使用dispatch_queue_create函数创建队列，第一个函数为队列的名称，第二个参数是队列的类型。上面代码的运行结果：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcd_serialQueue.png)
+
+可以看到串行队列中的任务都在`num = 2`的这条线程中按顺序执行。也很明显这个过程不需要我们自己去关心线程的创建和开启等操作。
+
+#### **主队列：Main Dispatch Queue**
+
+Main Dispatch Queue，常称主队列，是由系统提供的一个串行队列，放在这个队列里的任务会被派发到主线程中执行。当在其他线程中需要将一些必要的操作放在主线程中执行的时候经常使用到。如需要刷新UI的时候我们可以直接获取这个队列，将任务追加到这个队列中。使用函数：`dispatch_get_main_queue()`可以获得主队列：
+
+```objective-c
+dispatch_async(dispatch_get_main_queue(), ^{
+       // 回到主线程，执行UI刷新操作
+});
+```
+
+#### **不能使用同步函数向当前线程的串行队列追加任务**
+
+下面的代码定义了两个task：`task0`和`task1`，使用异步的方式将`task0`添加到队列中，然后将`task0`中将`task1`同步添加到主队列中。同步函数`dispatch_sync`使得`task0`需要等待`task1`执行完毕才能返回。而`task1`排在`task0`后面，需要`task0`执行完成后才能被主线程调用。`task0`和`task1`相互等待造成死锁。
+
+```c
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        
+        void (^task1)(void) =  ^{
+             printf("taks1\n");
+        };
+        
+        void (^task0)(void) =  ^{
+            printf("taks0\n");
+            dispatch_sync(dispatch_get_main_queue(), task1); 
+            printf("taks0_end\n");
+        };
+        
+        dispatch_async(dispatch_get_main_queue(), task0);
+       
+        dispatch_main();
+    }
+    return 0;
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcd_sync_wait.jpg)
+
+想要解决同步等待问题，只要让`task0`无等待`task1`即可。即是以异步函数添加`task1`
+
+```objective-c
+dispatch_async(dispatch_get_main_queue(), task1); 
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcd_async_unwait.jpg)
+
+当然，日常的开发中使用`GCD`还是为了能在其他线程异步执行任务。
+
+### Concurrent Dispatch Queue
+
+使用异步函数将任务追加到并发的队列，因为异步函数且队列不是当前线程，所以会开启多条线程来执行队列中的任务.将`dispatch_queue_create`函数的第二参数改为`DISPATCH_QUEUE_CONCURRENT`:
+
+```objective-c
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        dispatch_queue_t concurrentQueue =
+        dispatch_queue_create("com.alin.tasks", DISPATCH_QUEUE_CONCURRENT);
+        for (int i = 0; i < 5; i++) {
+            dispatch_async(concurrentQueue, ^{
+                printf("task id = %i in serialQueueof thread:%s \n"
+                       ,i,[NSThread currentThread].description.UTF8String);
+            });
+        }
+        return 0;
+    }
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcd_concurrentQueue.jpg)
+
+从打印的结果可以发现两点：
+
+* 从打印的结果左边的红框的`task id`可以发现并发队列中任务的完成不是按追加到队列的的顺序。
+* 从打印的结果右边的红框的`number`可以发现任务并发队列任务不是在同一条线程执行的。
+
+> 需要注意的是：iOS和OSX基于Dispatch Queue中的任务个数，CPU核数，以及CPU负荷等当前系统的状态来决定Concurrent Dispatch Queue中并发处理的任务数。
+
+在开发中的大部分情况并不需要主动使用`dispatch_queue_create`来创建一个并发的队列。同样系统也为开发者提供了一个并发的队列: `Globle Dispatch Queue`。
+
+#### **Globle Dispatch Queue**
+
+Main Dispatch Queue，常称全局队列，是由系统提供的一个并发队列，使用函数`dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)`，这里第一参数为队列的优先级，第二个为系统的预留参数，总是传0。`Globle Dispatch Queue`和`Main Dispatch Queue`配合的一个经典用法如下:
+
+```c
+dispatch_queue_t global =
+dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+dispatch_async(global, ^{
+    // 一些耗时的操作
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // 回到主线程更新UI
+    });
+});
+```
+
+### 其他几个常用的GCD函数
+
+#### 延时执行任务: dispatch_after
+
+NSObject为提供了一个简单的延时执行的方法:
+
+```objective-c
+//Invokes a method of the receiver on the current thread 
+//using the default mode after a delay.
+[self performSelector:@selector(run) withObject:nil afterDelay:2.0]
+```
+
+不过这个方法只能指定任务到当前线程，使用dispatch_after可以指定在指定的时间后将需要执行的任务追加到某个队列，所以也就可以在异步的线程去执行了：
+
+```objective-c
+// 获得全局队列
+dispatch_queue_t global_queue =
+dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+// 计算任务被追加到队列的时间(过3秒)
+dispatch_time_t when =
+dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC));
+
+// 将是要延时的任务追加到目标队列(dispatch_after是异步函数)
+dispatch_after(when, global_queue, ^{
+    // 需要延时的任务
+});
+```
+
+> This function waits until the specified time and then asynchronously adds `block` to the specified `queue`. 从函数`dispatch_after`的描述可以发现，准确来说`dispatch_after`不是在指定的时间处理任务，而是将任务追加到队列。
+
+#### **任务组：dispatch_group**
+
+有时会遇到这样的情况，想在多个异步并发的任务都执行完成后，然后在执行其他任务。比如某个很大的视频文件，我们可以分段下载，待所有的分段都现在完成后通知用户下载完成。如果遇到类似这样的需求可以使用`dispatch_group`配合`dispatch_group_notify`完成:
+
+```objective-c
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_queue_t queue =
+        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+        
+        for (NSInteger index = 0; index < 5; index ++) {
+            dispatch_group_async(group, queue, ^{
+                printf("task id = %ld thread number = %s\n",
+                      index,[NSThread currentThread].description.UTF8String);
+            });
+        }
+        
+        dispatch_group_notify(group, queue, ^{
+            printf("=========== dispatch_group_notify ===========\n");
+            printf("submitted to the specified queue when task0--task4 completed ");
+        });
+        dispatch_main();
+        return 0;
+    }
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcg_dispatch_group_notify.png)
+
+因为这些任务都是追加到全局队列中的，所以这些任务在的执行是在不同线程而且任务的完成顺序也是不确定的。但是使用`dispatch_group_notify`追加的任务一定是最后才执行。
+
+> `dispatch_group_notify`函数监听传入的group中任务的完成，等这些任务全部执行以后，再将第三个参数（block）追加到第二个参数的queue（相同的queue）中。如果这group是空的，`dispatch_group_notify`中的block会立刻被追加到queue中。
+
+#### **只执行一次：dispatch_once**
+
+通过`dispatch_once`处理的代码`只执行一次`，而且是线程安全的：
+
+```oc
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        for (int i = 0; i < 5; i++) {
+            printf("for loop start %i\n",i);
+            static dispatch_once_t onceToken;
+            dispatch_once(&onceToken, ^{
+                printf("=========  dispatch_once  ==========\n");
+            });
+            printf("for loop end %i\n",i);
+        }
+
+        return 0;
+    }
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcg_dispatch_once.png)
+
+`dispatch_once`可以在构建单列模式中使用。比如定义一个单例SingleTonClass:
+
+```objective-c
+// 头文件
+#import <Foundation/Foundation.h>
+
+@interface SingleTonClass : NSObject
+    
++ (instancetype)shared;
+@end
+
+// 实现文件
+ #import "SingleTonClass.h"
+
+@implementation SingleTonClass
+
+static id _instance;
++ (id)allocWithZone:(struct _NSZone *)zone
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [super allocWithZone:zone];
+    });
+    return _instance;
+}
+
++ (instancetype)shared
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [[self alloc] init];
+    });
+    return _instance;
+}
++ (id)copyWithZone:(struct _NSZone *)zone
+{
+    return _instance;
+}
+
+@end
+```
+
+使用`dispatch_once`使得`allocWithZone:`内存分配和`[[self alloc] init]`初始化只会执行一次。回到main函数中检查效果:
+
+```objective-c
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        
+        NSMutableArray *mArray = [NSMutableArray array];
+        for (int i = 0; i < 5; i++) {
+            [mArray addObject:[[SingleTonClass alloc] init] ];
+            [mArray addObject:[SingleTonClass shared]];
+        }
+        
+        for (SingleTonClass *singleton in mArray) {
+            printf("singleton address: %p\n",singleton);
+        }
+
+        return 0;
+    }
+}
+```
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/gcd_dispatch_once_singleton.png)
+
+打印对象的地址可以看到是同一个对象，推荐使用`dispatch_once`，因为它还是线程安全的哦。
+
+### 最后
+
+GCD还有其他一些函数，由于在开发中很少用到，这里就不去探究了。需要的时候可以查阅文档。当然也特别推荐一部书籍`《Objective-C 高级编程》`，一个日本人写的。个人认为这部书写的很不错，书中的主要内容分为三部分：`iOS内存管理`，`block`和`GCD`。书不是很厚但是很干。满满的干货，需要点耐心去阅读。
+
+PS: 希望这篇文章能帮助到你，很感谢你阅读到这里，一直觉得我这么烂的文笔写的文章能看到最后的都是有信仰的人。
+
