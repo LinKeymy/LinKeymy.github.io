@@ -254,4 +254,3 @@ int main(int argc, const char * argv[]) {
 
 1. 如果你想了解如何自己实现一个KVO推荐前往：[如何自己动手实现 KVO](http://tech.glowing.com/cn/implement-kvo/)
 2. 如果你想要优雅地使用KVO推荐使用：[KVOController](https://github.com/facebook/KVOController)
-
