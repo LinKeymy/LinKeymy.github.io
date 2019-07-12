@@ -5,3 +5,179 @@ subtitle: 4个方法的实现和思考
 author: ALin
 date: 2019-07-09 22:58:59 +0800
 ---
+
+
+
+#### 算法1
+
+这个方法比较明显，容易理解，直接检查了所有的子序列的情况。假设最某个子序列为 $A_i$  $A_{i+1}$ …. $A_{j-1}$ $A_j$ ,其中 $A_i$ 为子序列的第一项，$A_j$  为子序列的最后一项，该子序列的和为$\displaystyle \sum^{j}_{k= i}{A_k}$ 。首项Ai的可以为$i\in [0,   n-1]$, 确定首项下标i后，尾项下标 $j\in[i, {n-1}]$ , 精确的分析结果由和$\displaystyle \sum^{n-1}_{i= 0}{}$ $\displaystyle \sum^{n-1}_{j= i}{}$ $\displaystyle \sum^{j}_{k= i}{1}$ 得到。
+
+$\displaystyle \sum^{n-1}_{i= 0}{}$ $\displaystyle \sum^{n-1}_{j= i}{}$ $\displaystyle \sum^{j}_{k= i}{1}$  = $\frac{n^3 + 3n^2+2n}{6}$   .  显然算法是 O($N^3$)。
+
+
+
+```c++
+/*
+ 设 
+ i =  5
+ j =  5     6    7      .....
+ k =  5    5 6  5 6 7
+ 所以 for (int k = i; i <= j; ++k)
+ 
+ O(N^3)
+ */
+int max_sub_sum_1(const vector<int> &vec) {
+    int max_sum = 0;
+    for (int i = 0; i < vec.size(); ++i) {
+        for (int j = i; j < vec.size(); ++j) {
+            int thisSum = 0;
+            for (int k = i; k <= j; ++k) {
+                thisSum += vec[k];
+            }
+            if (thisSum > max_sum) {
+                max_sum = thisSum;
+            }
+        }
+    }
+    return max_sum;
+}
+
+```
+
+
+
+#### 算法2
+
+算法1过于低效，它做了大量重复的工作，通过观察 $\displaystyle \sum^{j}_{k= i}{A_k}$ = $A_j +  \displaystyle \sum^{j-1}_{k= i}{A_{k}}$ 可以看出。每次变化都会丢弃掉上一次j-1的求和 $ \displaystyle \sum^{j-1}_{k= i}{A_{k}}$ 。下面是改进的算法。精确的分析结果由和$\displaystyle \sum^{n-1}_{i= 0}{}$ $\displaystyle \sum^{n-1}_{j= i}{}$ 1 得到。
+
+$\displaystyle \sum^{n-1}_{i= 0}{}$ $\displaystyle \sum^{n-1}_{j= i}{}$ 1  = $\frac{n^2+n}{2}$   .  显然算法是 O($N^2$)。
+
+```c++
+
+/*
+ 设  i = 5，  j = 7
+    j =  5      6      7      .....
+  sum =  5    5 + 6  5 + 6 +7
+ j的后面的一项的和等于前面求得的；j = 7 时 为 (5 + 6) + 7
+  O(N^2)
+ */
+int max_sub_sum_2(const vector<int> &vec){
+    int max_sum = 0;
+    for (int i = 0; i < vec.size(); ++i) {
+        int thisSum = 0;
+        for (int j = i; j < vec.size(); ++j) {
+            thisSum += vec[j];
+            // 重复了前面的求和过程
+//            for (int k = i; k <= j; ++k) {
+//                thisSum += vec[k];
+//            }
+            if (thisSum > max_sum) {
+                max_sum = thisSum;
+            }
+        }
+    }
+    return max_sum;
+}
+```
+
+
+
+#### 算法3
+
+
+
+首先确定中间一项$A_k$ ，其中 k =  n / 2 ,最大子序列可能出现在3处：
+
+1. $A_0    A_1  …A_i… A_k$ 
+2. $A_{k+1}    A_{k+2}  …A_j… A_{n-1}$ 
+
+3. $A_{x}  …A_k… A_{y}$    $x <=y, x\in[0, k], y\in[k, n-1]$
+
+那么现在的问题变成了，我们要分别找出1 、2、3 种情况下的最大子序列 ，最后maxSum = max(cond_1,cond_2,cond_3).  我们将一个大的问题，切分成了更小的问题。对于小的问题，重复上面的分析，可以进一步逼近基准情况，最后等到整个问题的解。
+
+
+
+```c++
+*
+ 最大子序列的递归算法
+ */
+// 求三个数的最大值
+int max3_int(int a, int b, int c) {
+    int max_ab = max(a, b);
+    return max(max_ab,c);
+}
+
+int maxSubRec(const vector<int> &vec,int left, int right) {
+    if (left == right) {
+        if (vec[left] > 0) {
+            return vec[left];
+        } else {
+            return 0;
+        }
+    }
+    
+    int center = (left + right) / 2;
+    int sum_leftRec = maxSubRec(vec, left, center);
+    int sum_rightRec = maxSubRec(vec, center + 1, right);
+    
+     // 左边部分的最大子序列
+    int leftBorderSum = 0, max_leftBorderSum = 0;
+    for (int i = center; i >= left; --i) {
+        leftBorderSum += vec[i];
+        if (leftBorderSum > max_leftBorderSum) {
+            max_leftBorderSum = leftBorderSum;
+        }
+    };
+    
+    // 右边部分的最大子序列
+    int rightBorderSum = 0, max_rightBorderSum = 0;
+    for (int j = center + 1; j <= right; ++j) {
+        rightBorderSum += vec[j];
+        if (rightBorderSum > max_rightBorderSum) {
+            max_rightBorderSum = rightBorderSum;
+        }
+    };
+    
+    int max_centerBorderSum = max_rightBorderSum + max_leftBorderSum;
+    // 返回前、中、后三个部分中最大的部分。
+    return max3_int(sum_leftRec, sum_rightRec, max_centerBorderSum);
+};
+
+/*
+ o(N(logN)
+ */
+int max_sub_sum_3(const vector<int> &vec) {
+    return maxSubRec(vec, 0, (int)vec.size() - 1);
+}
+
+
+
+```
+
+
+
+#### 算法4
+
+
+
+```c++
+/*
+ O(N)
+ */
+
+int max_sub_sum_4(const vector<int> &vec) {
+    int thisSum = 0, max_sum = 0;
+    for (int i = 0; i < vec.size(); ++i) {
+        thisSum += vec[i];
+        if (thisSum > max_sum) {
+            max_sum = thisSum;
+        } else if (thisSum < 0) {
+            thisSum = 0;
+        }
+    }
+    return max_sum;
+}
+
+
+```
+
