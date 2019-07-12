@@ -1,0 +1,195 @@
+---
+layout: post
+title: iOS计时器的使用
+subtitle: CADisplayLin、NSTimer、dispatch_source_t
+author: ALin
+date: 2019-07-12 14:49:00 +0800
+---
+
+在iOS中有时候需要在一些特定的时间点中执行某项任务，或者特定的时间间隔反复执行任务。通常提供给我的编程API有CADisplayLin、NSTimer、dispatch_source_三种，这里来比较一下这三种的使用的异同点和注意点。
+
+### CADisplayLin、NSTimer使用注意
+
+CADisplayLin、NSTimer的使用有2点需要特别注意的，否则会引起灾难性的问题。
+
+##### （1）内存管理
+
+CADisplayLin、NSTimer会对传入的target强引用，如果target本身也对它们强进行引用。那么就导致了常见的循环引用的内存泄露问题。
+
+```oc
+@interface SomeTarget ()
+@property (nonatomic,strong) CADisplayLink *linker;
+@property (nonatomic,strong) NSTimer *timer;
+
+@end
+
+@implementation SomeTarget
+
+- (void)testTimeCount {
+    self.linker = [CADisplayLink displayLinkWithTarget:self selector:@selector(linkTask)];
+    [self.linker addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+    self.timer =  [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(timerTask) userInfo:nil repeats:YES];
+}
+
+- (void)timerTask {
+    static int taskCount = 0;
+    if (taskCount >= 10) {
+        [self.timer invalidate];
+    }
+    taskCount++;
+      NSLog(@"%s",__func__);
+}
+
+- (void)linkTask {
+    static int taskCount = 0;
+    if (taskCount >= 10) {
+        [self.linker invalidate];
+    }
+    taskCount++;
+     NSLog(@"%s",__func__);
+}
+
+- (void)dealloc {
+    NSLog(@"%s",__func__);
+}
+
+@end
+```
+
+建立一个SomeTarget类，拥有`CADisplayLink *linker `、`NSTimer *timer`俩个成员属性。使用它们满足定时执行linkTask和timeTask的需求，在testTimeCount中，SomeTarget的self作为target被传入`CADisplayLink `、`NSTimer`。上面的代码实际的引用模型如下：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/cadisplay_timer_loop.png)
+
+明显看出 1 、 2 处都出现的循环引用，导致了SomeTarget对象无法销毁，同时可以测试它的`dealloc`方法也没有调用，进一步印证了事实。不过我们可以使用代理对象来解决这个问题。
+
+在`SomeTarget`和`CADisplayLink `、`NSTimer`之间加入代理`NSProxy`，首先linker、timer会发送消息到代理对象proxy，proxy收到消息后将消息转发给target进行处理。这样避免了linker和timer直接强引用target，打破了它们之间的强引用循环链。
+
+```oc
+
+@interface ALProxy : NSProxy
+@property (nonatomic,weak) id target;
+@end
+
+@implementation ALProxy
+
+
++ (instancetype)proxyWithTarget:(id)target {
+    ALProxy *proxy = [ALProxy alloc];
+    proxy.target = target;
+    return proxy;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
+    return [self.target methodSignatureForSelector:sel];
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation {
+    [invocation invokeWithTarget:self.target];
+}
+
+@end
+
+```
+
+这里需要修改签名的代码
+
+```objective-c
+@interface SomeTarget ()
+
+@property (nonatomic,strong) ALProxy *proxy;
+@property (nonatomic,strong) CADisplayLink *linker;
+@property (nonatomic,strong) NSTimer *timer;
+
+@end
+
+@implementation SomeTarget
+
+- (void)testTimeCount {
+    self.linker = [CADisplayLink displayLinkWithTarget:self.proxy selector:@selector(linkTask)];
+    [self.linker addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+    self.timer =  [NSTimer scheduledTimerWithTimeInterval:1 target:self.proxy selector:@selector(timerTask) userInfo:nil repeats:YES];
+}
+// 其他代码
+.......
+
+@end
+```
+
+ALProxy的通过`self.proxy`作为target被传入`CADisplayLink `、`NSTimer`。而在通过转发后消息的最终target为最初的SomeTarget对象。
+
+```
+- (void)forwardInvocation:(NSInvocation *)invocation {
+    [invocation invokeWithTarget:self.target];
+}
+```
+
+最终修改过的代码实际的引用模型如下：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/cadisplay_timer_prory.png)
+
+这样的一个模型下，如果没有外部变量强应用SomeTarget对象，会经历如下过程
+
+ （1）此时SomeTarget对象的引用计数为**0**，它首先会被销毁，释放timer和proxy。这时`NSTimer`和`NSProxy`的引用计数都减1，结果是`NSTimer`的引用计数由1变为**0**，`NSProxy`的引用计数由2变为1
+
+（2）`NSTimer`的引用计数为**0**,`NSTimer`会被销毁同时释放proxy。`NSTimer`会被销毁后没有其他对象引用 `NSProxy`，`NSProxy`最后也会被销毁
+
+问题解决。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/cadisplay_timer_proxy_result.png)
+
+
+
+##### （2）CADisplayLin、NSTimer和NSRunloop的联系
+
+
+
+在前面的代码中linker需要被加入到runloop中才能有效。
+
+```objective-c
+- (void)testTimeCount {
+		......
+    [self.linker addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+    self.timer =  [NSTimer scheduledTimerWithTimeInterval:1 target:self.proxy selector:@selector(timerTask) userInfo:nil repeats:YES];
+}
+```
+
+同时在执行如下代码时，该方法的内部实现已经将timer加入到了当前线程的runloop。
+
+```objective-c
+[NSTimer scheduledTimerWithTimeInterval:1 target:self.proxy selector:@selector(timerTask) userInfo:nil repeats:YES];
+```
+
+总而言之，在使用CADisplayLin、NSTimer时一定要确保它们已经在runloop中，而且是在我们期望的运行模式（NSRunLoopMode）下工作。
+
+
+
+### 使用dispatch_source_计时
+
+
+
+##### NSTimer的时间误差
+
+由于NSTimer严重依赖于NSRunloop而工作，当loop中的工作任务十分繁重导致在loop的某一阶段，在执行timer任务前消耗了可观的时间，这就导致了NSTimer不准时的现象，如果这种不准时的现象出现在对时间的精准度要求非常严格情况下，这是不可容忍的，需要去避免。若如此种情形，使用GCD的计时器dispatch_source_t会是更加一种更好的选择。
+
+##### dispatch_source_t 的具体使用
+
+An object that coordinates the processing of specific low-level system events, such as file-system events, timers, and UNIX signals.可以利用它来处理timers的时间。顾名思义，dispatch_source_t是一种基于顾名思义，dispatch_source_t是一种source的消息，它使用的source的消息。
+
+```objective-c
+- (void)dispatch_source_demo {
+    static int count = 0;
+    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(timer, DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC, 1 * NSEC_PER_SEC);
+    dispatch_source_set_event_handler(timer, ^{
+        count++;
+         NSLog(@"%s",__func__);
+        if (count > 10) {
+           //dispatch_suspend和dispatch_resume配对。
+            dispatch_suspend(timer);
+        }
+    });
+    dispatch_resume(timer);
+}
+```
+
+这篇文章的目的是明确CADisplayLin、NSTimer、dispatch_source_t的差异性和使用的注意点。关于dispatch_source_t的更多信息请点击[dispatch_source_t传送门](https://developer.apple.com/documentation/dispatch/dispatch_source_t#declarations)。如果希望轻松阅读基本的源码可一参考博客[深入浅出 GCD 之 dispatch_source](https://developer.apple.com/documentation/dispatch/dispatch_source_t#declarations)。

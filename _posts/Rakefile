@@ -19,7 +19,7 @@ task :new do
             file.puts "layout: post"
             file.puts "title: #{@name}"
             file.puts "subtitle: #{@subtitle}"
-            file.puts "author: JackLin"
+            file.puts "author: ALin"
             file.puts "date: #{Time.now}"
             file.puts "---"
     end
