@@ -1,7 +1,7 @@
 ---
 layout: post
-title: C++引用
-subtitle: & && move
+title: C++引用和右值
+subtitle: move
 author: ALin
 date: 2019-01-14 16:58:06 +0800
 ---
