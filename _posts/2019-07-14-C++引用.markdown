@@ -1,0 +1,277 @@
+---
+layout: post
+title: C++引用
+subtitle: & && move
+author: ALin
+date: 2019-01-14 16:58:06 +0800
+---
+
+C++在性能和扩展性上越走越远，结果牺牲了易用性，一版比一版更不易学习。
+
+首先，我们先来看看啥是引用 &
+
+#### 引用 &
+
+引用变量是一个别名，也就是说，它是某个已存在变量的另一个名字。一旦把引用初始化为某个变量，就可以使用该引用名称或变量名称来指向变量。
+
+> ## C++ 引用 vs 指针
+>
+> 引用很容易与指针混淆，它们之间有三个主要的不同：
+>
+> - 不存在空引用。引用必须连接到一块合法的内存。
+> - 一旦引用被初始化为一个对象，就不能被指向到另一个对象。指针可以在任何时候指向到另一个对象。
+> - 引用必须在创建时被初始化。指针可以在任何时间被初始化。
+
+
+
+试想变量名称是变量附属在内存位置中的标签，您可以把引用当成是变量附属在内存位置中的第二个标签。因此，您可以通过原始变量名称或引用来访问变量的内容。例如：
+
+```c++
+#include <iostream>
+#include <string>
+using namespace std;
+int main(int argc, const char * argv[]) {
+    string name = "unixlin";
+    string& ref_name = name;
+    cout << "name: " << name << endl;
+    ref_name = "change_unixlin";
+    cout << "name: " << name << endl;
+    return 0;
+}
+```
+
+运行结果:
+
+```
+name: unixlin
+name: change_unixlin
+Program ended with exit code: 0
+```
+
+#### 右值
+
+其实，在右值引用（&&）发明之前，右值就已经可以影响代码逻辑了。
+
+```c++
+//没问题的，编译可以通过：
+const std::string& name = "rvalue";
+//是编译不过的：
+std::string& name = "rvalue"; 
+```
+
+再来个更有趣的是：
+
+```c++
+void print(const string& name) {
+    cout << "c_value detected:" << name << endl;
+}
+
+void print(string& name) {
+    cout << "lvalue detected:" << name << endl;
+}
+int main(int argc, const char * argv[]) {
+    std::string name = "name_lvalue";
+    print(name);
+    print("rvalue");
+    return 0;
+}
+```
+
+运行结果：
+
+```
+lvalue detected:name_lvalue
+rvalue detected:rvalue
+Program ended with exit code: 0
+```
+
+从结果看，name 和 "rvalue" 构成了函数的重载。那么name 和 "rvalue" 的区别是一个是常量一个是变量？其实也不完全是。`&&`该出场了。
+
+#### 右值引用 &&
+
+```c++
+#include <iostream>
+#include <string>
+
+using namespace std;
+void print(const string& name) {
+    cout << "c_value detected:" << name << endl;
+}
+
+void print(string& name) {
+    cout << "lvalue detected:" << name << endl;
+}
+
+
+void print(string&& name) {
+    cout << "rvalue detected:" << name << endl;
+}
+
+int main(int argc, const char * argv[]) {
+    string l_name = "l_name";
+    const string c_name = "c_name";
+    print(l_name);
+    print("r_name");
+    print(c_name);
+    return 0;
+}
+
+```
+
+运行结果：
+
+```c++
+lvalue detected:l_name
+rvalue detected:r_name
+rvalue detected:c_name
+Program ended with exit code: 0
+```
+
+结果说明若提供了为右值重载的函数的时，右值的传参会去选择接受右值引用作为参数的函数（接受`&&`参数的），而不是更通用的接受常量引用作为参数的函数。所以，`&&`可以更加细化右值和常量引用。那么右值有什么用，又该如何使用？。`&&`用来区分右值，在一个构造函数或赋值函数的参数，它对应的类包含指针，并指向一个动态分配的资源（内存）时，就可以在函数内避免深拷贝。看代码分析更加明显：
+
+```c++
+#include <iostream>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+class System {
+private:
+    string *name;
+public:
+    // constuctor
+    System (const char chars[]){
+        name = new string(chars);
+    }
+    // copy constructor
+    System (const System &system){
+        cout << "copy from " << *(system.name) << endl;
+        name = new string(system.name->c_str());
+    }
+    // assign operator
+    System& operator= (const System& rsystem) {
+        cout << "assign from " << *(rsystem.name) << endl;
+        System tmp(rsystem.name->c_str());
+        string *s = this->name;
+        this->name = tmp.name;
+        tmp.name = s;
+        return *this; // 取的this指向的变量，返回给外部引用
+    }
+    // destructor
+    ~System() {
+        if (name) {
+            cout << "destructor of " << *name << endl;
+            delete name;
+        }
+    }
+};
+
+void copy() {
+    cout << "- - - - - - - - - - copy start - - - - - - - - - " << endl;
+    System xos("xos");
+    System windows = xos;
+    cout << "- - - - - - - - - - copy end - - - - - - - - - " << endl;
+}
+
+void assign() {
+    cout << "- - - - - - - - - - assign start - - - - - - - - - " << endl;
+    System xos("xos");
+    System windows("window");
+    windows = xos;  // operator=
+    cout << "- - - - - - - - - - assign end - - - - - - - - - " << endl;
+}
+
+void rvalue() {
+    cout << "- - - - - - - - - - rvalue start - - - - - - - - - " << endl;
+    System windows("window");
+    windows = System("xos");
+    cout << "- - - - - - - - - - rvalue end - - - - - - - - - " << endl;
+}
+
+
+
+int main(int argc, const char * argv[]) {
+    copy();
+    assign();
+    rvalue();
+    return 0;
+}
+
+```
+
+运行结果：
+
+```
+- - - - - - - - - - copy start - - - - - - - - - 
+copy from xos
+- - - - - - - - - - copy end - - - - - - - - - 
+destructor of xos
+destructor of xos
+- - - - - - - - - - assign start - - - - - - - - - 
+assign from xos
+destructor of window
+- - - - - - - - - - assign end - - - - - - - - - 
+destructor of xos
+destructor of xos
+- - - - - - - - - - rvalue start - - - - - - - - - 
+assign from xos
+destructor of window
+destructor of xos
+- - - - - - - - - - rvalue end - - - - - - - - - 
+destructor of xos
+Program ended with exit code: 0
+```
+
+前两个例子`copy()`和`assign()`里面的结果没问题。这里将`xos`里面的的资源拷贝到`windows`里是合理的，因为这两个独立的个体都需要有各自的独享资源（string）。
+
+但是在第三个例子就不对了。这次深拷贝的对象`oxs`是个右值（`System("xos")`的返回值），其实它马上就要被回收了。所以本身是不需要独享资源的。
+
+#### move
+
+继续上面的代码为System添加一个`operator=`的重载 
+
+```c++
+    // move assign operator
+    System& operator= (System&& rsystem) {
+        // 直接使用了rsystem的name，无需创建临时的中间对象进行深拷贝
+        this->name = rsystem.name; 
+        // rsystem 本身很快就销毁，这里因为已经被this->name指向了，
+        // 就设为NULL，防止rsystem销毁时被delete
+        rsystem.name = NULL;
+        return *this; // 取的this指向的变量，返回给外部引用
+    }
+```
+
+运行结果：
+
+```
+- - - - - - - - - - copy start - - - - - - - - - 
+copy from xos
+- - - - - - - - - - copy end - - - - - - - - - 
+destructor of xos
+destructor of xos
+- - - - - - - - - - assign start - - - - - - - - - 
+assign from xos
+destructor of window
+- - - - - - - - - - assign end - - - - - - - - - 
+destructor of xos
+destructor of xos
+- - - - - - - - - - rvalue start - - - - - - - - - 
+- - - - - - - - - - rvalue end - - - - - - - - - 
+destructor of xos
+Program ended with exit code: 0
+```
+
+
+
+#### 最后
+
+引用(&)是一个变量的别名，放宽点看可以把它当作时一个受约束的指针。
+
+右值引用(&&)，是明确告诉编译器这是一个右值，没有别任何变量外部没有对它引用，函数内部可以用完就销毁，这样在函数内的其他变量可以使用直接利用它的一些资源而不用进行深拷贝，提高效率。
+
+
+
+
+
