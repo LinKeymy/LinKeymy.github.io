@@ -273,7 +273,24 @@ Program ended with exit code: 0
 
 右值引用(&&)，是明确告诉编译器这是一个右值，没有别任何变量外部没有对它引用，函数内部可以用完就销毁，这样在函数内的其他变量可以使用直接利用它的一些资源而不用进行深拷贝，提高效率。
 
+总结一下：
 
+```c++
+    
+		// d s 初始化，所以调用构造函数初始化 ，这种情况System("d")不会当作右值处理 
+		// 编译器当作是 System d("d"); 直接初始化处理
+		System d = System("d");   // constructor
+    System s = System("s");   // constructor
+		// d s 已经初始化过了， 由于 d 是左值，所以调用左值参数的赋值操作 copy assing
+    s = d; // copy assign
+		// n 没有初始化，d已经初始化，故s需要初始化，且d是左值参数，初始化的数据从copy。
+    System n = d; // copy constructor
+		// 显式将d作为右值，且t没有初始化，所以调用右值参数的初始化方法
+    System t = std::move(d);  // move constructor
+		// s 已经初始化过了，而且羡慕两个都是右值参数，所以调用右值参数的赋值操作
+    s = System("ss"); // move assign
+    s = std::move(d); // move assgn
+```
 
 
 
