@@ -1,0 +1,174 @@
+---
+layout: post
+title: 排序
+subtitle: 几种常见的排序算法
+author: ALin
+date: 2019-07-28 15:00:49 +0800
+---
+
+这里我们一起看看将数组元素排序的问题。为了方便，假设这里的例子中，数组只包含整数。同时也不会过多的关注算法复杂度的数学分析。
+
+#### 插入排序  Insertion sort
+
+插入排序是最简单的排序算法之一，它的时间复杂度为O(N^2)。
+
+插入排序由N-1趟排序组成。插入排序基于这样的事实：第P趟排序中，已知位置0到位置P-1已经处于排过序的状态。下表给出一组数据样例在每一趟插入后的情况。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/insertion_sort_list.png)
+
+上表表达了一般是思路。在第P趟，将位置P上的元素向左移动，直至找到它在前P+1个元素中的正确位置为止。下面假设P=3时的，情况分析。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/insertion_sort_p3.png)
+
+当P=3，index【0，1，2，3】共有4 = P+1个位置，可能是它的位置。取【P】位置上的51和它前面【P-1】的61进行比较。明显这里51较小，因此61要往后移动，空出位置。然而空出的位置51还不能可以放置，因为空位前面的数字右可能比51要大。因此重复上一个步骤，让其和51比较。34 较 51 小，可以确定这个位置合适放51，将51移入。第三趟完成。下面是上面描述的具体代码实现：
+
+```c++
+void insertionSort(vector<int> & a) {
+    for (int i = 1; i < a.size(); ++i) {
+        int tmp = move(a[i]);
+        int j;
+        for ( j = i; j > 0 && tmp < a[j - 1]; --j) {
+            a[j] = move(a[j - 1]);
+        }
+        a[j] = move(tmp);
+    }
+}
+```
+
+#### 希尔排序  Shell sort
+
+希尔排序取名于它的发明者Donald Shell，该算法的时间可以冲破2次方的时间屏障。它通过比较数组中相距一定间隔的元素，每趟所用的距离递减，最后为1只比较相邻元素的最有一趟为止.假设这里给出的距离序列是： 【5， 3， 1】；下面就是对应数字每趟希尔排序后的结果：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/shell_sort_list.png)
+
+当对相隔为5的间距进行排序时，对于需要排序的位置`index[0,5,10]` 对应的 `value: [8,21,6]`。排序后`value: [6,8,21,]`。相隔为3的也是重复上面的排序。在最后间距为1的的排序就是前面的插入排序过程。间距为1时必须的，这样才能保证所有元素的顺序都是符合要求的。希尔排序也是插入排序，它先执行一定间隔的子序列排序，这样可以减少最后一次的相邻间隔元素的插入排序。下面是它的一个实现：
+
+```c++
+void shellSort(vector<int> & a) {
+    for (unsigned long gap = a.size() / 2; gap > 0 ; gap /= 2) {
+        for (long i = gap; i < a.size(); i+=gap) {
+            int tmp = move(a[i]);
+            long j;
+            for (j = i; j >= gap && tmp < a[j - gap]; j -= gap) {
+                a[j] = move(a[j - gap]);
+            }
+            a[j] = tmp;
+        }
+    }
+}
+```
+
+#### 堆排序  Heap sort
+
+基于二叉堆的优先队列给出了`O(NlogN)`的时间排序。该想法的算法就叫：堆排序，它比普通插入排序`O(N^2)`和希尔排序`O(N^x),1<x<2`，要有更好的时间效率。
+
+基本的策略是先建立N个元素的最大二叉堆，然后按顺序离开的的元素就是满足输出结果的序列。建堆耗时为O(N)，每次deleteMin的耗时为O(logN),这样delete过程总时间为O(NlogN)。假设一个数组：
+
+​                                  [81,94,11,96,12,35,17,95,28,58,41,75,15]
+
+经过最大堆建堆后的结果如图（此处堆的数据结构是数组）：
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/heap_sort_heapTree.png)
+
+
+
+下面的两个图显示的delete第一个元素和第二个元素之后的堆。第一次开始删除前，堆中最后的元素是15。对堆进行deleteMax，删除后堆空余一个位置出来，把15先放到堆顶，先前堆顶的元素移入数组尾部的位置。交换后，堆的size减少1，也就是仅红色数字部分前的属于堆的内容。完成交换后，对堆定进行下滤操作使其恢复满足二叉堆的性质，第二次删除操作重复第一次的过程。
+
+![有帮助的截图]({{ site.url }}/assets/postsImages/heap_sort_heap_delete_process.png)
+
+下面的代码是上述堆排序的一个实现:
+
+```c++
+
+// 为了减少空间的使用，将每次从堆中移出的值转移到数组的后边，避免一个辅助数组的使用。
+// 这样需要一个大小来控制这个删除过程的操作范围。【0，n）开区间
+void percolateDown(vector<int> & a, long i, long n) {
+    long child;
+    for (; 2 * i + 1  < n; i = child) {
+        child = 2 * i + 1;
+        if ((child + 1) < n && a[child] < a[child + 1]) ++child;
+        if (a[child] > a[i]) {
+            swap(a[child], a[i]);
+        } else {
+            break;
+        }
+    }
+}
+
+void heapSort(vector<int> & a) {
+    // 自下而上下滤建堆
+    for (long i = a.size() / 2 - 1; i >= 0; --i) {
+        percolateDown(a, i, a.size());
+    }
+    // 移除堆顶元素，将其放入数组未。
+    for (long j = a.size() - 1; j > 0; --j) {
+        swap(a[0], a[j]);
+        percolateDown(a, 0, j);
+    }
+}
+// vector<int> v = {81,94,11,96,12,35,17,95,28,58,41,75,15}; 测试
+```
+
+很多人可能会在堆删除过程中使用一个辅助的数组来保存堆deleteMax的值，这样内存的需求就double了，在数据很大的时候这或许是个问题，当然如果你直接使用STL中的priority_queue在做堆排，那么只能这样了。这这里为了展示堆排和提高效率避免是去使用它。
+
+#### 归并排序  merge sort
+
+
+
+[81,94,11,96,12,35,17,95,28,58,41,75,15]
+
+
+
+```c++
+// merge 归并排序的驱动入口
+void mergerSort(vector<int> & a) {
+    vector<int> tmp(a.size());
+    mergeSort(a, tmp, 0, a.size() - 1);
+}
+
+// 归并的逻辑部分
+void mergeSort(vector<int> & a, vector<int> & tmpArray, long left, long right) {
+    if (left < right) {
+        long center = (left + right) / 2;
+        /*            分           */
+        mergeSort(a, tmpArray, left, center);  // 左
+        mergeSort(a, tmpArray, center + 1, right);  // 右
+        /*            治           */
+        merge_conquer(a, tmpArray, left, center + 1, right);
+    }
+}
+
+// 归并的具体处理部分
+void merge_conquer(vector<int> & a, vector<int> tmp, long leftPos, long rightPos, long rightEnd) {
+    long leftEnd = rightPos - 1;
+    long mergePos = leftPos;  // 合并时，回移到a时的起始位置，结束位置还是rightEnd不会改变。
+    long tmpPos = leftPos;
+    
+    while (leftPos <= leftEnd && rightPos <= rightEnd) {
+        if ( a[leftPos] <= a[rightPos]) {
+            tmp[tmpPos++] = move(a[leftPos++]);
+        } else {
+            tmp[tmpPos++] = move(a[rightPos++]);
+        }
+        if (leftPos > leftEnd) {
+            while (rightPos <= rightEnd) {
+                tmp[tmpPos++] = move(a[rightPos++]);
+            }
+        }
+        if (rightPos > rightEnd) {
+            while (leftPos <= leftEnd) {
+                tmp[tmpPos++] = move(a[leftPos++]);
+            }
+        }
+    }
+    // 将tmp移回a
+    for (; mergePos <= rightEnd; ++mergePos) a[mergePos] = move(tmp[mergePos]);
+}
+```
+
+
+
+#### 快速排序 quick sort
+
+
+

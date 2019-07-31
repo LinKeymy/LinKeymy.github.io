@@ -1,0 +1,174 @@
+---
+layout: post
+title: 记一次基本计算器的解答
+subtitle: 几种实现
+author: ALin
+date: 2019-07-18 18:02:39 +0800
+---
+
+#### 题目：
+
+实现一个基本的计算器来计算一个简单的字符串表达式的值。
+
+字符串表达式可以包含左括号 `(` ，右括号 `)`，加号 `+` ，减号 `-`，**非负**整数和空格 ` `。
+
+示例 1:
+
+>输入: "1 + 1"
+>输出: 2
+
+示例 2:
+
+> 输入: " 2-1 + 2 "
+> 输出: 3
+
+示例 3:
+
+> 输入: "(1+(4+5+2)-3)+(6+8)"
+> 输出: 23
+
+说明：
+
+你可以假设所给定的表达式都是有效的。
+请不要使用内置的库函数 eval。
+
+来源：力扣（LeetCode）
+链接：https://leetcode-cn.com/problems/basic-calculator
+
+#### 1. 逆波兰记法
+
+计算出标准表达式的结果总体实现过程可分为一下两步。
+
+1. 将标准的中缀表达式转换成后缀表达式：
+
+ 思路：当看到一个运算时，先把它入栈，栈代表挂起状态的运算符。当知道栈中高优先级的运算符需要运算，将它弹出使用
+
+ （1）读到一个操作数时，立刻将它输出。
+
+ （2）读到操作符 + - * / 和 （ ，在入栈前先从栈中弹出不比它高的优先级的元素到输出，（ 比较特殊，遇到它直接入栈，
+
+​     除非遇到 （ 。弹出工作完成，再将读到的运算符入栈。
+
+ （3）读到 ），将栈元素弹出直到遇到一个 （ 为止。（ 不输出， ） 不入栈。
+
+ （4）读到字符尾，将栈运算符弹出到输出，直到栈空。
+
+2. 使用后缀表达式（逆波兰记法）运算：
+
+ 将元素依次入栈，遇到运算符时就将栈顶的两个元素弹出运算，直到empty。
+
+```c++
+
+class Solution {
+private:
+    stack<int> num;
+    stack<char> op;
+    int pri(char a){
+        switch(a){
+            case '+': return 1;
+            case '-': return 1;
+            case '*': return 2;
+            case '/': return 2;
+            case '(': return 3;
+            default: return -1;
+        }
+    }
+    void cal(){
+        int b=num.top();num.pop();
+        int a=num.top();num.pop();
+        switch(op.top()){
+            case '+':num.push(a+b);break;
+            case '-':num.push(a-b);break;
+            case '*':num.push(a*b);break;
+            case '/':num.push(a/b);break;
+        }
+        op.pop();
+    }
+public:
+    int calculate(string s) {
+        string ss;
+        for(int i=0;i<(int)s.size();i++){
+            if(isdigit(s[i]))
+                ss+=s[i]; // 它可能是多位的数字 100908....
+            else if(s[i]==' ') continue;
+            else{
+                if(!ss.empty()){ // 前面读出的操作数，输出
+                    num.push(stoi(ss));
+                    ss.clear();
+                }
+
+                if(op.empty()||s[i]=='('|| pri(op.top())<pri(s[i]) ) { // 优先级比栈顶直接入栈
+                    op.push(s[i]);
+                } else if(s[i]==')') {
+                    while(op.top()!='(') cal();
+                    op.pop();  // 这个pop是对 ‘（’ 的动作
+                } else {
+                    // 优先级低，先等栈高优先级运算完成后入栈
+                    while(!op.empty()&&pri(op.top())<=pri(s[i])) cal();
+                    op.push(s[i]);
+                }
+            }
+        }
+        // 最后一位，可能是数，它在上面的for中没有被录入
+        if(!ss.empty()) num.push(stoi(ss));
+        while(!op.empty()) cal();
+        return num.top();
+    }
+};
+
+```
+
+上面的代码考虑到了 * / 的情况，如果仅仅是考了 + - 的话，下面的解答会更简单一些。
+
+#### 2.  - ( 的状态标记
+
+一次for 循环，根据     ` - (`两个符号连续出现来判断操作数是需要取反。` - (`有累积过程，和遇到 `)`的消除过程，比如 ` - (`累积到了2 个，那么对后面的操作没有影响，如果跟着出现了 `)` 那么前面的一个 `- (`的作用被消除，这样剩下一个` - (`对后面的操作数有影响。
+
+```c++
+class Solution {
+    
+public:
+    static int calculate(string s) {
+        // 统计遇到 -（ 的情况
+        stack<bool> sign;
+        
+        int minus = 1;
+        int sum = 0;
+        int currentOp = 1; // -1 1
+        string ss; // 操作数字符
+        char si;
+        for(int i=0;i<(int)s.size();i++){
+            si = s[i];
+            if(isdigit(si)) {
+                ss+=si;
+            } else if (si==' ') continue;
+            else {
+                if (!ss.empty()) {
+                    sum += (minus * currentOp * stoi(ss));
+                    ss.clear();
+                }
+                
+                if (si == '-') {
+                    currentOp = -1;
+                } else if (si == '+') {
+                    currentOp = 1;
+                } else if (si == '(') {
+                     sign.push(currentOp == -1);
+                    if (currentOp == -1) {
+                        minus = -minus;
+                        currentOp = 1;
+                    }
+                } else if (si == ')') {
+                    if (sign.top())  minus = -minus;
+                      sign.pop();
+                } else {
+                    cout << "undefined symbol";
+                }
+            }
+          }
+        if (!ss.empty()) (sum += (minus * currentOp * stoi(ss)));
+        return sum;
+    }
+};
+```
+
