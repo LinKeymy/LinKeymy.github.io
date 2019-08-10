@@ -13,6 +13,8 @@ date: 2019-07-09 22:58:59 +0800
 
 给出一组整数 A[0]   A[1] ….  A[n-2]  A[n-1] ，求出这组数字子序列和中的最大值。
 
+这是在leetcode上的一道算法题[leetcode上的一道算法题](https://leetcode-cn.com/problems/maximum-subarray/)
+
 
 
 #### 1. 穷举法
@@ -182,7 +184,7 @@ int max_sub_sum_3(const vector<int> &vec) {
 /*
  O(N)
  */
-
+// 不够正确的处理
 int max_sub_sum_4(const vector<int> &vec) {
     int thisSum = 0, max_sum = 0;
     for (int i = 0; i < vec.size(); ++i) {
@@ -196,5 +198,16 @@ int max_sub_sum_4(const vector<int> &vec) {
     return max_sum;
 }
 
+// 完整的处理，排除全负或者只有两个元素的情况
+int maxSubArray(vector<int>& nums) {
+    int tmp_sum = 0;
+    int max_sum = INT_MIN;
+    for (int i = 0; i < nums.size(); ++i) {
+         tmp_sum += nums[i];
+        if (tmp_sum > max_sum) max_sum = tmp_sum;
+        if (tmp_sum < 0) tmp_sum = 0;  // 每次都check、update临时和
+    }
+    return max_sum;
+}
 
 ```
