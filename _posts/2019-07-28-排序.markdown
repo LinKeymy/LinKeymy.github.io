@@ -113,11 +113,39 @@ void heapSort(vector<int> & a) {
 
 #### 归并排序  merge sort
 
+在讨论归并排序前，先介绍一个常见的算法设计技巧： 分治算法。分治算法由两个部分组成：
 
+> 分： 递归解决较小的问题。
+>
+> 治： 然后，从子问题的解构建出原问题的解。
+
+形式上看， 在其代码中包含两个或两个以上的递归调用叫做分治算法，而代码中的只含有一个递归调用不是分治算法。通常子问题是不相交的（也即是没有重叠部分）。
+
+回到归并排序算法中，看看如何处理前面的排序问题：
 
 [81,94,11,96,12,35,17,95,28,58,41,75,15]
 
+基于介绍的分治算法，首先需要做的就是分：
 
+* 分，将问题分解：
+
+  第一次分解： 将原问题分成【81,94,11,96,12,35】、【17,95,28,58,41,75,15】两个子问题的排序。
+
+  第二次分解： 将原问题分成【81,94,11】【96,12,35】、【17,95,28】【58,41,75,15】4个子问题的排序。
+
+  第三次分解： 将原问题分成【81】【94,11】【96】【12,35】、【17】【95,28】【58,41】【75,15】8个子问题的排序。（此时有些递归到达了基准情况，不可再分（如【81】），回等待和其相关的的子问题【94、11】，求解完成进行治的过程）。
+
+  第四次分解：将原问题分成【81】、【94】【11】、【96】、【12】【35】、【17】、【95】【28】、【58】【41】【75】【15】。16个子问题的排序
+
+* 治，从子问题的解构建出原问题的解
+
+  第一次构建：【81】【11,94】【96】【12,35】、【17】【28,95】【41,58】【15,75】
+
+  第二次构建：【11,81,94】【12,35,96】、【17,28,95】【15,41,58,75】
+
+  第三次构建：【11,12,35,81,94,96】、【15,17,28,41,58,75,95】
+
+  第四次构建：【11,12,15, 17,28,35,41,58,75,81,94,95,96】
 
 ```c++
 // merge 归并排序的驱动入口
@@ -169,6 +197,44 @@ void merge_conquer(vector<int> & a, vector<int> tmp, long leftPos, long rightPos
 
 
 #### 快速排序 quick sort
+
+
+
+```c++
+
+int quickSort_partition(vector<int> &v, int lt , int rt) {
+    int i = lt, j = rt + 1;
+    int comparaNum = v[lt];
+    while (true) {
+        // while stop with two condition: 1. break 2. v[++i] > compareNum
+        while (v[++i] < comparaNum)  if(i == rt) break;
+        // while stop with two condition: 1. break 2. v[++j] < compareNum
+        while (v[--j] > comparaNum)  if (j == lt) break;
+        // (除了lo) index < i 一定满足v[i] < compareNum（因为每次++i的条件就是 v[i] < compareNum）
+        // 若i = j 则是同一个数 , 不用交换。若  j > i , 则 由于 index < i 一定满足v[i] < compareNum
+        // 故也不用交换，并且当前的 while 结束因此只剩下 v[lt]的位置有可能是不准确的。
+        if (i >= j) break;
+        swap(v[i], v[j]);
+    }
+    // 由于 while (v[--j] > compareNum)  if (j == lt) break;
+    // v[j] 有两种可能。 1.  v[j]  < compareNum , 2. v[j] == compareNum;
+    // 只有在v[j] < compareNum 才需要交换。
+    if (v[j] < comparaNum) swap(v[lt], v[j] );
+    return j;
+}
+
+// 核心逻辑部分，对于每个partIndex满足 
+//  index < partIndex : v[index] <= v[partIndex]
+//	index > partIndex : v[index] >= v[partIndex]
+void quickSort(vector<int> &v, int lt, int rt) {
+    // 当 lt 为最小的元素时，partIndex == lt， partIndex-1 < lt
+    if (lt >= rt) return;
+    int partIndex = quickSort_partition(v, lt, rt);
+    quickSort(v, lt, partIndex -1);
+    quickSort(v, partIndex+1, rt);
+}
+
+```
 
 
 
